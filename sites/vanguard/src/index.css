@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 768px) {
+  .logo-marquee {
+    animation-duration: 14s;
+  }
+}
+
+@layer base {
+  html {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  video {
+    display: block;
+  }
+}

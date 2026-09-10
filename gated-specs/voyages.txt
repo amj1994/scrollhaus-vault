@@ -1,0 +1,319 @@
+Build "Voyages & Chapters" — an editorial small-group travel studio landing page. Vite +
+React 18 + TypeScript + Tailwind CSS + Motion (Framer Motion's successor package,
+imported from 'motion/react'). Ten sections, driven by three real interaction mechanisms:
+scroll-linked parallax (useScroll/useTransform), reveal-on-view line/word animation
+(useInView + custom split components), and a cursor-tracked circular image-reveal lens.
+
+===============================================================================
+STACK & FILES
+===============================================================================
+Vite + React + TypeScript + Tailwind (Tailwind v4 @theme syntax in CSS, not tailwind.config
+theme.extend). Path alias '@' -> './src'. Dependencies: motion, lucide-react,
+@supabase/supabase-js (present, unused on the page). cn()-style helpers not used — plain
+template strings for conditional classes throughout.
+
+Files: src/main.tsx, src/App.tsx, src/index.css, and one component per section under
+src/components/, plus two shared primitives (AnimatedWords, AnimatedLines, PixelButton)
+reused across sections.
+
+App.tsx renders, inside a div with bg-[#f8f3ef] text-[#1a1a1a] font-sans antialiased
+overflow-x-hidden: Header, then <main> holding Hero, Story, Lens, UpcomingTours,
+TravelIntention, WhyTravel, FeaturedTour, TravelerStories, Faq, ClosingCta — then Footer
+outside <main>.
+
+===============================================================================
+FONTS — THIRD-PARTY LICENSING RISK, READ BEFORE SHIPPING
+===============================================================================
+Three @font-face declarations point at someone else's asset bucket:
+  'Behind The Nineties' (regular + italic) <- https://qclay.design/lovable/journeys/BehindTheNineties-*.ttf
+  'Noi Variable Flex Trial'                <- https://qclay.design/lovable/journeys/NoiVariableFlexTrial.ttf
+These are hotlinked from a domain that is not yours ("qclay.design", a Lovable-platform
+template author's bucket). "Noi Variable Flex Trial" names itself a TRIAL font — that is
+almost certainly a commercial webfont licensed to whoever built the original template, not
+cleared for redistribution by anyone else. Before shipping this anywhere real:
+  - Replace 'Behind The Nineties' with a self-hosted or Google Fonts serif in the same
+    register (a humanist display serif with real italics — Fraunces, Canela-alike, or
+    similar) — it carries the entire display voice of the page (the "Voyages crafted with
+    a story." wordmark, every section headline).
+  - Replace 'Noi Variable Flex Trial' outright — it is declared but in practice the page
+    falls back to Inter Tight for everything using --font-noi, so dropping it changes
+    nothing visually; it is pure dead weight and pure risk.
+  - Inter and Inter Tight (--font-sans, --font-sans-tight) and Chivo Mono (--font-mono) are
+    loaded from Google Fonts in index.html and carry no such risk.
+
+Also fifteen hero/section images are hotlinked directly from images.pexels.com (free stock,
+lower risk than the fonts, but still not self-hosted and subject to Pexels's own URL
+lifetime). List and re-host before depending on any of them long-term; the full list is
+next to each component below.
+
+===============================================================================
+DESIGN TOKENS (src/index.css, Tailwind v4 @theme block)
+===============================================================================
+@theme{
+  --font-display:'Behind The Nineties',serif;
+  --font-sans:'Inter',sans-serif;
+  --font-sans-tight:'Inter Tight',sans-serif;
+  --font-noi:'Noi Variable Flex Trial','Inter Tight',sans-serif;
+  --font-mono:'Chivo Mono',monospace;
+  --color-cream:#f8f3ef;
+}
+Palette used directly as arbitrary Tailwind values (no further tokens): cream #f8f3ef
+(primary background), a slightly deeper warm neutral #f0ebe6 (alternating section
+background), near-black #1a1a1a (ink, and the dark section background). No border radius
+or shadow tokens — every rounded corner is a literal Tailwind class (rounded-xl/2xl/full).
+
+index.html head: Google Fonts stylesheet for Inter / Inter Tight / Chivo Mono
+(display=swap), a favicon hotlinked from the same qclay.design bucket (replace this too).
+
+===============================================================================
+SHARED PRIMITIVES
+===============================================================================
+AnimatedWords.tsx — splits text on spaces; each word is an overflow-hidden span containing
+a motion.span that animates from {y:'100%',opacity:0} to {y:'0%',opacity:1}, staggered
+`baseDelay + i*stagger` per word (defaults duration .5, stagger .07). Takes an isInView
+prop from the caller rather than measuring itself — used where the parent already has an
+useInView.
+
+AnimatedLines.tsx — the line-reveal building block, used for every section headline.
+Splits text on spaces, then MEASURES actual line-wrapping in a hidden mirror div (spans
+with data-word, grouped by matching offsetTop) so the animation staggers by real rendered
+line, not by a guessed word count — re-measures once document.fonts.ready resolves, so a
+FOUT reflow can't leave stale line groups. Each measured line is wrapped in an
+overflow-hidden div and animates the same {y:'100%'->'0%', opacity:0->1} as AnimatedWords,
+staggered `baseDelay + i*stagger` per LINE, driven by a local useInView (once:true,
+threshold=`amount`, default 0.4). Props: duration (.42), stagger (.06), baseDelay (0),
+amount (.4), targetOpacity (1), firstLineIndent, forceSingleLine (skips all measurement).
+
+PixelButton.tsx — a canvas-based hover-fill effect, the page's signature button treatment.
+An absolutely-positioned <canvas> sits behind the button label inside a relative/isolate
+anchor. On pointerenter it animates a 0->1 "fill progress" (rAF loop, speed-controlled
+duration, default .45s); on pointerleave it reverses. Each animation frame redraws a grid
+of `pixelSize`px squares (default 5-6px) across the button, filling in the ones whose
+precomputed per-cell threshold is below the current progress. Thresholds are NOT random —
+`thresholds[i] = ((x / (cols-1)) * 0.65 + hash(i) * 0.35) * 0.92`, a deterministic hash
+function seeded by cell index, blended 65% left-to-right sweep + 35% noise, so the fill
+reads as a wipe from the left with a dissolved, static-like edge rather than a flat curtain
+or fully random scatter. Cells within 0.12 of the threshold render at 45% alpha for one
+extra frame (a soft leading edge). Text color and border color crossfade via CSS transition
+once fill progress passes 0.6. Config props: pixelColor, pixelSize, speed, textColor,
+hoverTextColor, hoverBorderColor.
+
+===============================================================================
+1. HEADER (src/components/Header.tsx)
+===============================================================================
+motion.header, initial y:-100 -> animate y:0 (.6s easeOut) on mount. fixed top-0 inset-x-0
+z-50; background transitions from transparent to bg-[#f8f3ef]/90 backdrop-blur-md +
+border-b once window.scrollY > 60. Row: h-16 (h-20 on lg), max-w-[1600px].
+Left: wordmark built from three spans — "Voyages" (full opacity) + "&" (40% opacity) +
+"Chapters" (full opacity) — all font-display text-2xl/3xl, NOT an image.
+Center (hidden md:flex): Journeys #journeys, Stories #stories, Why Us #why, FAQ #faq —
+each with a underline that grows width:0->full on hover (300ms).
+Right: "Start Planning" -> #contact, 1px border pill, hover inverts to bg-[#1a1a1a] text
+white. Mobile: a Menu/X toggle opens a motion.div height:0->auto dropdown with the same
+links stacked.
+
+===============================================================================
+2. HERO (src/components/Hero.tsx)
+===============================================================================
+h-screen min-h-[700px], useScroll({target:ref, offset:['start start','end start']}) drives
+three transforms as the hero scrolls past: the background image translates y 0%->25%
+(useTransform), a black overlay's opacity rises .35->.6 over the first half of scroll, and
+the foreground content column both translates y 0%->40% AND fades opacity 1->0 over the
+first 60% — so the hero image parallaxes slower than scroll while the copy visibly sinks
+and dissolves as you leave, a genuine two-speed scroll effect, not a single parallax layer.
+  heroImage: https://images.pexels.com/photos/14036107/pexels-photo-14036107.jpeg?auto=compress&cs=tinysrgb&w=1920
+
+Content (centered): eyebrow "Curated Journeys — Est. 2016" (font-mono, fades/rises in at
+delay .3s), then the headline via AnimatedLines: "Voyages crafted with a story." at
+text-[12vw] down to lg:text-[6.5vw], baseDelay .6 stagger .12 duration .7 amount .2 — this
+is the single largest, slowest reveal on the page and the first thing a visitor reads.
+Sub-copy at delay 1.4s: "We design journeys that feel like chapters — immersive,
+unhurried, and personal. Not itineraries. Stories you step into." Two CTAs at delay 1.7s:
+"Explore Upcoming Journeys" (solid white pill) -> #journeys, "Plan Your Own" (outline) ->
+#contact. A bouncing ArrowDown (translateY [0,8,0] loop, 2s) fades in at delay 2.2s,
+bottom-center.
+
+===============================================================================
+3. STORY (src/components/Story.tsx) — "01 — The Premise"
+===============================================================================
+py-24/40, bg cream. 12-col grid: left (5 cols) is position:sticky top-32, eyebrow "01 — The
+Premise", then AnimatedLines "We don't sell trips. We author chapters." (font-display
+text-4xl->6xl). Right (6 cols, offset to col-start-7): a lede via AnimatedWords ("Every
+journey we craft begins with a conversation, not a checklist."), two body paragraphs, then
+three stats (40+ Journeys designed / 12 Max travelers per trip / 23 Countries covered) in a
+flex-wrap row above a top border, each block fading in with its own delay (.3/.6/.8/1.0s).
+
+===============================================================================
+4. LENS (src/components/Lens.tsx) — "02 — The Lens" — SIGNATURE INTERACTION
+===============================================================================
+Dark section (bg-[#1a1a1a]). Left (5 cols, white text): eyebrow, h2 "Look closer. / Travel
+deeper." (second line at 40% white opacity), body copy about layers within a single vista,
+then "DRAG TO EXPLORE" beside a thin horizontal rule.
+Right (7 cols): a 4:3 rounded-2xl image stage. useScroll({target, offset:['start end','end
+start']}) drives the BASE image's scale 1.1->1->1.05 as the section crosses the viewport
+(a gentle scroll-driven zoom, independent of the hover interaction below).
+  base image (mountain vista):  https://images.pexels.com/photos/16970043/pexels-photo-16970043.jpeg?auto=compress&cs=tinysrgb&w=1600
+  inner image (road detail):    https://images.pexels.com/photos/6130817/pexels-photo-6130817.jpeg?auto=compress&cs=tinysrgb&w=1200
+On mousemove within the stage, track pointer position as a percentage of the element's
+bounding rect (pos.x, pos.y). A second, absolutely-stacked image (the "inner" image) is
+masked with `clip-path: circle(20% at ${pos.x}% ${pos.y}%)` and its opacity springs to 1 on
+mouseenter / 0 on mouseleave (.3s) — so a 20%-radius circular window follows the cursor and
+reveals the second photograph through the first, with a 96px white-ringed circle outline
+drawn at the cursor position for a lens-like frame. cursor:none on the stage (the circle
+itself is the cursor). While inactive, a centered "HOVER TO REVEAL" pill (dark glass, mono
+caps) sits over the image and fades out the moment the lens activates.
+
+===============================================================================
+5. UPCOMING TOURS (src/components/UpcomingTours.tsx) — "03 — Upcoming Journeys", id="journeys"
+===============================================================================
+Header row: eyebrow + AnimatedLines "Where we're going next." (text-4xl->7xl) left, a
+short paragraph right ("Small groups. Fixed dates...").
+4-up card grid (2-up sm, 1-up default), each card a 3:4 image with a bottom gradient, a
+"spots left" pill top-left, location pin + name bottom-left over the image, then below the
+image: tour title (font-display text-2xl/3xl), description, a date+price row against a top
+border, and an ArrowUpRight that rotates 45deg + scales 1.1 on hover. Cards stagger in
+(y:40->0) delayed .3 + i*.12s.
+  Saharan Crossroads / Morocco / Oct 12–24, 2026 / $4,200 / 6 spots left /
+    https://images.pexels.com/photos/4405248/pexels-photo-4405248.jpeg?auto=compress&cs=tinysrgb&w=900
+  Fire & Ice / Iceland / Nov 3–11, 2026 / $5,800 / 4 spots left /
+    https://images.pexels.com/photos/20955085/pexels-photo-20955085.jpeg?auto=compress&cs=tinysrgb&w=900
+  Lanterns & Quiet / Japan / Mar 28–Apr 8, 2027 / $6,400 / 8 spots left /
+    https://images.pexels.com/photos/10099611/pexels-photo-10099611.jpeg?auto=compress&cs=tinysrgb&w=900
+  The Wild Edge / Patagonia / Jan 15–28, 2027 / $7,200 / 5 spots left /
+    https://images.pexels.com/photos/16377558/pexels-photo-16377558.jpeg?auto=compress&cs=tinysrgb&w=900
+Below the grid: a centered PixelButton "See all journeys" (dark fill, pixelSize 5, speed .5).
+
+===============================================================================
+6. TRAVEL INTENTION (src/components/TravelIntention.tsx) — "04 — Travel Intentions"
+===============================================================================
+Slightly deeper cream bg (#f0ebe6). Header: eyebrow + AnimatedLines "What kind of journey
+are you after?" (max-w-4xl). 12-col grid: left (5 cols) is a vertical list of four
+selectable rows (accordion-style, single active index in state); each closed row shows only
+the label + a -45deg-rotated arrow, the active row inverts to bg-[#1a1a1a] text-white and
+expands a description paragraph via height:0->auto. Right (7 cols): a 4:5/5:6 image stack —
+all four images absolutely stacked, each crossfading opacity 0<->1 and scale 1.05<->1 (.6s)
+based on which intention is active — with a bottom gradient and a caption ("Intention 0N" +
+the label) that itself re-animates (key={active}, fresh y:20->0 fade) every time the active
+index changes.
+  Slow & restorative — "Long mornings, thermal baths, regions where nobody rushes..." —
+    https://images.pexels.com/photos/35859002/pexels-photo-35859002.png?auto=compress&cs=tinysrgb&w=1200
+  Cultural immersion — "Cook with a family in Hanoi. Learn calligraphy in Kyoto..." —
+    https://images.pexels.com/photos/10099611/pexels-photo-10099611.jpeg?auto=compress&cs=tinysrgb&w=1200
+  Wilderness & challenge — "Multi-day treks, high altitudes, the kind of tired that feels
+    earned..." — https://images.pexels.com/photos/16377558/pexels-photo-16377558.jpeg?auto=compress&cs=tinysrgb&w=1200
+  Creative & photographic — "Golden-hour chases, studio visits, and neighborhoods most
+    travelers never find." — https://images.pexels.com/photos/19190945/pexels-photo-19190945.jpeg?auto=compress&cs=tinysrgb&w=1200
+
+===============================================================================
+7. WHY TRAVEL (src/components/WhyTravel.tsx) — "05 — Why Travel With Us", id="why"
+===============================================================================
+Cream bg. Header: eyebrow + AnimatedLines "The difference is in what we leave out." (6 cols)
+beside a short paragraph bottom-aligned (5 cols, offset col-start-8). Below: a 4-up grid
+(2-up sm) built as a CSS Grid with a 1px gap filled by the ink color, so the gap itself
+reads as hairline dividers between cards (gap-px bg-[#1a1a1a]/10, each cell bg-cream).
+Each card: a lucide icon (Users/Map/Compass/Home, size 28, strokeWidth 1.5), title, body —
+and on hover the WHOLE CARD inverts (bg-cream -> bg-[#1a1a1a], icon/title/body all crossfade
+to white/white-60%) over 500ms, not just a border or shadow change.
+  Users / Small by design / "Never more than twelve travelers. Often as few as four. You
+    will know everyone's name by day two."
+  Map / Built from experience / "Every route, lodge, and guide is chosen by someone who
+    walked it within the last year. Not from a brochure."
+  Compass / Room for the unplanned / "We schedule loosely enough that a festival, a
+    recommendation, or a wrong turn can become the best day."
+  Home / Stays that matter / "Family-run riads, mountain refuges, a farmhouse in Kanazawa.
+    Places with a hand and a name behind them."
+
+===============================================================================
+8. FEATURED TOUR (src/components/FeaturedTour.tsx) — "06 — Featured Journey"
+===============================================================================
+Dark section (bg-[#1a1a1a]). Eyebrow + AnimatedWords headline "The Sacred Valley, on foot."
+12-col grid: left (6 cols) a 4:5 rounded-2xl image, scroll-parallaxed (useTransform of
+scrollYProgress, y from -5% to 15%, image rendered at 115% height so the parallax never
+exposes an edge), bottom gradient, "Peru" label + price/duration overlay. Right (6 cols,
+pl-8): a lede paragraph, then a 5-row itinerary list (bg white/10 gap-px dividers, each row
+a day range + title + detail, staggered fade-in .08s apart), then a PixelButton "Reserve a
+spot" (white fill, inverts text to dark on hover).
+  featuredImage: https://images.pexels.com/photos/15684889/pexels-photo-15684889.jpeg?auto=compress&cs=tinysrgb&w=1400
+  Day 1–2 Cusco & acclimatization / Day 3 Sacred Valley / Day 4–6 The Inca Trail /
+  Day 7 Machu Picchu at dawn / Day 8–9 Return & decompress. $5,400 / 9 days / Jan 2027.
+
+===============================================================================
+9. TRAVELER STORIES (src/components/TravelerStories.tsx) — "07 — Traveler Stories", id="stories"
+===============================================================================
+Deeper cream (#f0ebe6), centered header. A single-testimonial carousel: AnimatePresence
+mode="wait" cross-dissolves (y:30->0 in, y:-30 out, .5s) between three stories keyed by
+index. Each: a square portrait (4 cols) beside a large quote icon + blockquote (8 cols,
+font-display text-2xl->4xl) + name/trip caption. Below: dot indicators (active dot widens
+to 12 units, inactive 6, both 1px tall pills) plus prev/next circular arrow buttons that
+invert to dark-fill on hover.
+  Sarah K. / Saharan Crossroads, 2025 / "I've taken a lot of trips. This was the first one
+    that felt like it was written for me..." / https://images.pexels.com/photos/977418/pexels-photo-977418.jpeg?auto=compress&cs=tinysrgb&w=400
+  Daniel R. / The Wild Edge, 2025 / "Our guide didn't just know the trail. He knew the
+    family that runs the teahouse at the pass..." / https://images.pexels.com/photos/34081654/pexels-photo-34081654.jpeg?auto=compress&cs=tinysrgb&w=400
+  Mei L. / Lanterns & Quiet, 2025 / "I came for the cherry blossoms. I left with a
+    calligraphy teacher in Kanazawa who still sends me postcards..." / https://images.pexels.com/photos/34238049/pexels-photo-34238049.jpeg?auto=compress&cs=tinysrgb&w=400
+
+===============================================================================
+10. FAQ (src/components/Faq.tsx) — "08 — Questions", id="faq"
+===============================================================================
+Cream bg. Left (4 cols, sticky top-32): eyebrow + AnimatedLines "Things people ask." + a
+short line inviting direct contact. Right (8 cols): six divide-y accordion rows, each a
+button (question + Plus/Minus icon that swaps on open) revealing an answer via
+height:0->auto (AnimatePresence, .3s), single-open-at-a-time state (index 0 open by
+default). Six real questions covering group size, what's included, custom trips, solo
+travelers, cancellation policy, and physical difficulty — see source for exact copy.
+
+===============================================================================
+11. CLOSING CTA (src/components/ClosingCta.tsx) — id="contact"
+===============================================================================
+min-h-[80vh] centered section over a full-bleed desert-dunes background image, scroll
+parallaxed (y -10%->20%, scale 1.15->1.05->1.15 across the section's transit — it
+breathes in AND out rather than a one-directional drift) under a flat black/55 overlay.
+  bgImage: https://images.pexels.com/photos/38569619/pexels-photo-38569619.jpeg?auto=compress&cs=tinysrgb&w=1920
+Eyebrow "Your chapter starts here", then AnimatedLines "Where will the story take you?" at
+text-[10vw] down to lg:text-[5.5vw], sub-copy, and two CTAs: a PixelButton "Start a
+conversation" -> mailto:hello@voyagesandchapters.com, and an outline "Browse upcoming
+journeys" -> #journeys.
+
+===============================================================================
+12. FOOTER (src/components/Footer.tsx)
+===============================================================================
+bg-[#1a1a1a] text-white, outside <main>. 12-col grid: brand column (5 cols) — Compass icon
++ wordmark, blurb, two circular social icons (Instagram, Mail). Two link columns (2 cols
+each): Journeys [Upcoming, Private tours, Past journeys, Gift a journey], Studio [About us,
+Our guides, Press, Contact]. Newsletter column (3 cols): "The Dispatch" label, one line of
+copy, an inline email input + "Join" button (glass input, white submit pill). Bottom bar:
+copyright + Privacy/Terms/Responsible Travel links.
+
+===============================================================================
+RESPONSIVE
+===============================================================================
+Tailwind default breakpoints (sm/md/lg), no custom values. Nav collapses to a hamburger
+dropdown below md. Every "N-col grid + sticky left column" layout (Story, Faq) drops the
+sticky behavior and stacks single-column below lg since Tailwind's lg:col-span/lg:sticky
+utilities simply don't apply. Card grids step 4→2→1 columns at lg/sm. Hero and ClosingCta
+headline sizes are already fluid (vw-based clamps via Tailwind's text-[Nvw] arbitrary
+values), so they don't need discrete breakpoint overrides.
+
+===============================================================================
+ACCEPTANCE
+===============================================================================
+- Every AnimatedLines/AnimatedWords instance fires once on first intersection and never
+  re-fires on scroll-back (useInView once:true throughout).
+- AnimatedLines measures real rendered line breaks (via the hidden mirror + data-word
+  spans), not a word-count guess — resize the viewport and headlines should still wrap
+  and stagger correctly.
+- The Lens section's circular reveal tracks the cursor smoothly with no lag, respects the
+  stage's actual bounding rect at any viewport width, and the "HOVER TO REVEAL" pill fades
+  out exactly when the lens activates.
+- PixelButton's fill sweeps left-to-right with a dissolved (not hard) edge, reverses
+  cleanly on pointerleave even mid-animation, and its canvas resizes correctly on container
+  resize (ResizeObserver-driven, not measured once on mount).
+- Hero's image, overlay and content all move at visibly different rates while scrolling
+  through the hero (three independent useTransform outputs from one useScroll).
+- Zero console errors; zero horizontal overflow at any breakpoint.
+- FONT LICENSING: before shipping anywhere public, replace 'Behind The Nineties' with a
+  licensed or open-source equivalent and drop 'Noi Variable Flex Trial' entirely (it is
+  unused in practice — everything using --font-noi already renders in the Inter Tight
+  fallback). Re-host or replace the fifteen Pexels-hotlinked images and the qclay.design
+  favicon before treating this as a finished, ownable asset.

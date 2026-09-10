@@ -1,0 +1,57 @@
+PELMATECH — Your Personal Health Companion
+Health-tech landing page with a full-bleed illustrated hero, a horizontally
+sliding team carousel, and a bordered 3-card benefits grid. TanStack Start v1 +
+React 19 + Vite 8 + Tailwind v4 + motion (framer-motion) + lucide-react.
+
+STACK
+- `motion/react` (the current package name for framer-motion) drives every
+  section entrance via three shared primitives — AnimatedHeading (blur+rise),
+  AnimatedText (rise), MaskedImage (clip-path reveal) — reused for literally
+  every headline, paragraph, and photo on the page.
+- A document-wide responsive "zoom" trick: below 1728px viewport width, the
+  entire page is downscaled via CSS `zoom` (not a transform) so every literal
+  pixel value in the design holds at any smaller width; at 1728px and above,
+  zoom is 1 and the layout sits at native size. Applied via a client-only
+  useEffect (the prompt's own inline-blocking-script version was dropped — see
+  below) with a resize listener to keep it live.
+- No backend, no database, no auth, single `/` route.
+
+ASSETS — none swapped, all fetched verbatim from the original CDN
+Every image (3 team portraits, the hero doctor-computer photo, 3 benefits
+still-lifes, and both logo variants) was downloaded byte-for-byte from
+qclay.design/lovable/pelmatech/ into src/assets/ and imported as ES modules, per
+the source prompt's own instruction. Nothing was regenerated — there's no
+placeholder or stock asset here to swap, every image is the template's real
+photography/illustration set.
+
+DEVIATION FROM THE LITERAL SPEC — documented, not silent
+The prompt calls for the 1728px-zoom logic to run via an inline `<script>`
+injected in the document head, executing before hydration so there's no flash
+of un-zoomed content on first paint. Implemented that exactly at first, but it
+produces a real (if cosmetic) React hydration-mismatch console error every
+load: the script mutates `document.documentElement.style.zoom` on the raw DOM
+before React hydrates, and React's hydration diff flags the resulting
+server/client attribute mismatch regardless of `suppressHydrationWarning`.
+Given the standing bar on this build queue of zero console errors, the inline
+script was dropped in favor of applying the zoom purely from the existing
+client-side useEffect (which the prompt already specifies as a hydration-safe
+duplicate of the same logic). Trade-off: a very brief unzoomed flash is
+possible on a cold load below 1728px, in exchange for a clean console on every
+load. The zoom itself is fully functional either way.
+
+NOTABLE IMPLEMENTATION DETAILS
+- TeamCarousel's slide distance is computed entirely from CSS calc() expressions
+  (using a `visible = 3.25` cards-per-viewport constant) rather than measuring
+  pixels in JS, so the "3 full cards + a sliver of the 4th" layout holds at any
+  width without a resize observer.
+- The circular hover "puck" (126px, heavy backdrop-blur) only mounts while the
+  pointer is over the carousel, animated in/out via AnimatePresence rather than
+  toggled with CSS opacity, so it never intercepts clicks when hidden.
+- BenefitsSection's card 02 ("Unethical") is the one card with its image on top
+  and text pinned to the bottom via `mt-auto` — cards 01 and 03 are the other
+  way around, exactly per the source spec's explicit reversal.
+- The header logo swaps from the white to the black wordmark variant purely
+  from a scrollY threshold (`innerHeight - 80`), not an intersection observer,
+  matching the prompt's specified detection method exactly.
+
+Added 2026-09-10.

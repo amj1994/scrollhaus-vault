@@ -1,0 +1,225 @@
+Build a single-page website called **THE THIRD TIME** — a warm, literary barbershop
+landing page told as a 145-frame scroll-scrubbed image sequence with GSAP ScrollTrigger
+choreography. Recreate it EXACTLY as specified below: every color token, class, easing
+curve, animation timing, and line of copy is intentional. Do not substitute, paraphrase,
+or "improve" anything.
+
+## 1. Stack & project setup
+- Plain static HTML/CSS/JS. No build step, no bundler, no framework.
+- One file: `index.html`. Must be served over HTTP (not opened via `file://`) because the
+  frame sequence is loaded with `new Image()` from a relative `frames/` folder.
+- One external dependency, both loaded from CDN in `<head>`:
+  `https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js`
+  `https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js`
+- Fonts via Google Fonts `<link>`: Newsreader (ital,opsz,wght axis: 0,6..72,300 / 0,6..72,400
+  / 0,6..72,500 / 1,6..72,300 — the italic 300 weight is used for emphasis), Instrument Sans
+  (400/500/600, body), DM Mono (400/500, all-caps labels and numeric readouts).
+- Title: `The Third Time — Barbering by appointment`. `<link rel="icon" href="data:,">`
+  (empty favicon, intentional).
+
+## 2. Asset pipeline — the 145-frame sequence
+- `frames/f_001.jpg` … `frames/f_145.jpg` (3-digit zero-padded index, `TOTAL = 145`,
+  `PAD = 3`). These are real photographic frames of a barbershop haircut scene, shot as a
+  single continuous take (or continuous camera move) so scrubbing through them reads as
+  one unbroken shot advancing forward — never a jump-cut or reversal.
+- All 145 images are preloaded with `new Image()` on page load, each `decoding="async"`.
+  A loader screen ("Opening the shop" + a thin progress bar + percentage) tracks
+  `loaded / TOTAL` and only reveals the page once every frame has loaded (`onload`/`onerror`
+  both count toward the total so a broken frame doesn't hang the loader forever). A 9-second
+  hard timeout force-starts the page even if some frames never resolve.
+- An optional `ASSET_BASE` global (empty string by default) can prefix every frame URL, so
+  frames can be served from a CDN/origin instead of the bundled `frames/` folder in
+  production — leave it unset to use the bundled frames.
+
+## 3. Page structure (all inside `<body>`)
+1. `#loader` — fixed fullscreen overlay, `z-index: 60`, centered `grid`, contains the
+   "Opening the shop" label, a 1px-tall progress bar (`.load-bar` / `.load-fill`), and a
+   percentage readout. Hidden (`opacity:0; visibility:hidden`) once all frames are loaded.
+2. `<header>` — fixed top, `z-index: 30`, flex `justify-content: space-between`. Left: the
+   wordmark `The <em>Third</em> Time` (Newsreader 500, the word "Third" italic in the brass
+   accent color). Center: a `.readout` showing `Guard` label + a live guard-number readout
+   (`#guardOut`, starts at `#4`) — hidden below 820px. Right: a pill button `Book a chair`
+   linking `tel:+18005550188`, 1px hairline border that turns brass-colored on hover. A
+   soft top-down gradient scrim sits behind the whole header so it stays legible over the
+   frame sequence without a hard bar.
+3. `.rail` — fixed vertical nav pinned to the right edge, vertically centered, `z-index: 20`,
+   hidden below 820px. A vertical "Guard" label plus four clickable ticks reading `#4`,
+   `#2`, `#1`, `#0` (each a tiny horizontal line + label). Clicking a tick smooth-scrolls the
+   page to that fraction of the film (`data-to="0.20"`, `0.42`, `0.64`, `0.86`). The tick
+   matching the current scroll position gets `data-on="1"`: its line widens from 14px to
+   28px and its color shifts from muted to brass.
+4. `<main>` → `.film` section — a single `position: relative` block whose height is set by
+   JS to `560vh` (auto height under reduced motion). Inside it:
+   - `.stage` — `position: sticky; top: 0; height: 100svh; overflow: hidden` — the pinned
+     viewport. Contains, stacked: `<canvas id="seq">` (the frame sequence painter,
+     `object-cover`-style letterboxing computed manually per frame), a `.vignette` overlay
+     (two gradients: top/bottom darkening + a right-edge darkening), and a `.grain` overlay
+     (an inline SVG fractal-noise data-URI, `opacity: 0.05`, `mix-blend-mode: overlay` — kept
+     deliberately subtle, "texture, not decoration").
+   - `.beats` — `margin-top: -100svh`, sits on top of the sticky stage and scrolls normally.
+     Contains five full-height sections in order:
+     a. `.hero` (bottom-aligned) — H1 `He cancelled the appointment <em>twice.</em>` (the
+        word "twice." emphasized in italic brass), a subhead paragraph, and a `.cue` line
+        reading `Scroll to sit down` with an animated drawing underline (`@keyframes draw`,
+        2.4s infinite scaleX pulse).
+     b. Beat `#4 · 00:00` — H2 `He wouldn't look up.` + body paragraph (see §5 for exact copy).
+     c. Beat `#2 · 00:11` — H2 `"What are we doing today?"` + body paragraph.
+     d. Beat `#1 · 00:26` — H2 `The shape was already there.` + body paragraph.
+     e. Beat `#0 · 00:38` — H2 `Then the chair turns around.` + body paragraph.
+     Every heading/paragraph inside these blocks carries `data-split` and is chopped at
+     build time into one `<span class="w">` per word (regex-based, preserves inline `<em>`
+     tags) — words are the animation unit, not lines or blocks.
+   - Each hero/beat block sits inside a `.panel`: translucent dark card
+     (`oklch(0.12 0.018 198 / .38)` background, 1px `oklch(1 0 0 / .085)` border, 2.5px
+     backdrop blur). Explicit rule: **no full-bleed gradient scrim behind the copy** — text
+     always sits inside this tight bounded panel so it stays legible over any frame.
+5. `.record` section (below the film, normal scroll) — two-column grid. Left: heading
+   `Nobody writes a review for a <em>haircut.</em>` + paragraph. Right: `.page` — a rotated
+   (0.9deg) cream index-card styled like a torn appointment-book page, header
+   `Chair Two — February`, then an ordered list of eight rebooking records (see §5 for exact
+   names/cadences), the last row (`Jonah`, `first visit · today`) styled in a warm accent
+   color via `[data-him]` to read as "this session's actual client." Footer caption:
+   `Rebooked before he left`.
+6. `.close` section — two-column grid. Left: heading `Chairs open at <em>seven.</em>` +
+   paragraph + a large tap-to-call link `(800) 555-0188` with a small `Tue – Sat` caption.
+   Right: a `<dl>` of four facts (`The cut`, `Barbers`, `First visit`, `Where` — exact copy
+   in §5), each with a hairline top border.
+7. `<footer>` — hairline top border, small caps two-line row: `The Third Time · Barbering by
+   appointment` / `41 Bridge Street`.
+
+## 4. Color system (CSS custom properties, oklch)
+```
+--cold:      oklch(0.212 0.021 196)   /* opening palette: cold porcelain/tile */
+--warm:      oklch(0.248 0.040 64)    /* closing palette: warm oiled-leather/brass */
+--ink:       oklch(0.952 0.008 90)    /* primary text */
+--muted:     oklch(0.742 0.018 196)   /* secondary/label text */
+--brass:     oklch(0.742 0.108 74)    /* accent — italic emphasis, active states, links */
+--paper:     oklch(0.897 0.021 92)    /* the appointment-book page background */
+--paper-ink: oklch(0.315 0.030 60)    /* text on the paper page */
+--hair:      oklch(1 0 0 / 0.13)      /* hairline borders */
+```
+Body background is `--cold`. A fixed full-viewport pseudo-element (`body::before`) holds
+`--warm` at `opacity: var(--heat)`, and `--heat` is driven live by scroll progress
+(0 → 1 across the whole film) — so the entire page's background temperature crossfades from
+cold blue-grey to warm amber as the user scrolls through the haircut, independently of
+whatever the current frame shows. This is the single most important visual mechanic on the
+page and must not be skipped or approximated.
+
+## 5. Exact copy
+**Hero:** `He cancelled the appointment <em>twice.</em>` / `The third time he sat down,
+looked at his hands, and let somebody else decide what he ought to look like.`
+
+**Beat 1 — guard `#4 · 00:00`:** `He wouldn't look up.` / `Three years of letting it grow
+out, because choosing felt like more effort than he had that week. He booked twice and
+cancelled twice. The third time he got as far as the chair.`
+
+**Beat 2 — guard `#2 · 00:11`:** `"What are we doing today?"` / `He said <em>whatever you
+think.</em> People say that when nobody has asked them a real question in a while. So the
+barber asked a second one, and a third, and somewhere around the fourth he started
+answering properly.`
+
+**Beat 3 — guard `#1 · 00:26`:** `The shape was already there.` / `A cut isn't an
+invention. It's finding the line the head was always going to have, then taking away the
+part that was hiding it. Forty minutes of small exact decisions, none of them reversible.`
+
+**Beat 4 — guard `#0 · 00:38`:** `Then the chair turns around.` / `He didn't smile straight
+away. He just looked — the way you look at a face you haven't seen in a long time and have
+to decide whether you recognise it.`
+
+**Record section:** `Nobody writes a review for a <em>haircut.</em>` / `But the book keeps
+its own record. The same first names come back every three weeks — one of them for eleven
+years now. It is the only rating that has ever meant anything in here.`
+
+Appointment-book rows (name / cadence / years), in order:
+`Ellis` every 3 wks · 11 yrs — `Marcus` every 4 wks · 9 yrs — `Danny R.` every 3 wks · 7 yrs
+— `Sam` every 2 wks · 6 yrs — `Ollie` every 5 wks · 4 yrs — `Theo` every 3 wks · 3 yrs —
+`Nate` every 4 wks · 2 yrs — `Jonah` first visit · today (this last row visually distinct).
+Footer caption: `Rebooked before he left`.
+
+**Close section:** `Chairs open at <em>seven.</em>` / `Walk in if there's a light on. Book
+if you'd rather not wait. Either way somebody will ask you a real question before they pick
+up the clippers.` / phone `(800) 555-0188` with caption `Tue – Sat`.
+
+Facts list: `The cut` → Forty minutes. Never rushed, never double-booked. / `Barbers` → Four
+chairs, all time-served. No commission, no upsell. / `First visit` → We talk before
+anything is switched on. / `Where` → 41 Bridge Street, corner entrance, green tile.
+
+Footer: `The Third Time · Barbering by appointment` / `41 Bridge Street`.
+
+## 6. Scroll mechanics — canvas frame scrub
+- `progress()` reads `.film`'s bounding rect: `span = height - innerHeight`,
+  `progress = clamp(-top / span, 0, 1)`.
+- GSAP ScrollTrigger drives a plain object `{ i: 0 }` from 0 to `TOTAL - 1` with `ease: 'none'`
+  and `scrub: 0.5` (`trigger: film, start: 'top top', end: 'bottom bottom'`), calling
+  `paint(f.i)` on every update. `scrub: 0.5` is what gives the frame advance its slight
+  trailing smoothness relative to raw scroll position — do not set `scrub: true`/`0`, the
+  softness is deliberate.
+- `paint(idx)`: rounds and clamps the index, skips redraw if it's the same frame already
+  drawn (`lastDrawn`), then manual-letterboxes the image into the canvas (`object-cover`
+  math: compare image aspect ratio to canvas aspect ratio, draw at whichever dimension
+  overflows, centered).
+- `readout(p)`: sets `--heat` (drives the cold→warm background crossfade, §4) and `--push`
+  (`1 + p * 0.05` — the canvas itself scales from 1.00 to 1.05 across the whole film via
+  `transform: scale(var(--push))`, origin `52% 46%`, a very slow creeping zoom) directly from
+  scroll progress every frame. Also updates the header guard-number readout and which rail
+  tick is active, using four bands: `p < 0.31 → #4`, `< 0.53 → #2`, `< 0.75 → #1`, else `#0`.
+- Canvas resizes to its container on `resize`, capped at `devicePixelRatio` 2, and
+  ScrollTrigger is refreshed after.
+- A `?at=0.62`-style query param jumps the scroll position to that fraction of the film on
+  load (`window.filmScrub.jumpTo`), useful for deep-linking to a specific beat.
+
+## 7. Scroll mechanics — copy choreography
+For every hero/beat panel, a separate ScrollTrigger timeline (`trigger` = the parent
+section, `start: 'top bottom'`, `end: 'bottom top'`, `scrub: 0.7`) runs:
+1. Panel fades/rises in: `autoAlpha 0→1`, `y 26→0`, 0.55s, `power2.out`, at timeline start.
+2. The `.guard` label slides in from the left (`x -14→0`) slightly after (offset 0.10).
+3. Each word span rises in with a 0.045s stagger (`autoAlpha 0→1`, `y 20→0`, `power2.out`),
+   offset 0.15.
+4. A hold (`duration: 1.15`, no properties) so the fully-revealed state persists.
+5. Words then drift out (`autoAlpha 1→0`, `y -14`, 0.02s stagger) followed almost
+   immediately by the whole panel fading/dropping out (`autoAlpha 1→0`, `y -22`).
+Below the film, `.rev`-tagged elements (record heading/paragraph, the appointment-book
+page, its list rows, the facts list) each reveal once on scroll-into-view (`start: 'top 86%'`
+or `'top 84%'`/`'78%'` for the book, `once: true`) with a word-level or block-level
+`gsap.from` — never re-triggered on scroll back up.
+
+**Documented failure mode to avoid:** if any element is skipped during a fast scroll
+(rather than passing through every intermediate scrollTrigger update), its opacity/transform
+must still be explicitly written on the skip path — otherwise it freezes at its last
+computed value instead of reaching its target state. Do not "optimize" by only updating on
+adjacent frames.
+
+## 8. Accessibility — `prefers-reduced-motion: reduce`
+This is a hard requirement, not a nice-to-have, and needs a CSS `!important` backstop in
+addition to the JS branch (belt and suspenders — GSAP's `matchMedia` alone is not enough if
+a transition is mid-flight when the media query flips):
+- CSS: all animations/transitions collapse to `0.01ms` duration, `.stage` becomes
+  `position: relative; height: 70svh` (unpins from sticky), `.film` height reverts to `auto`,
+  `.beats` loses its negative margin, beat sections get normal padding instead of full-height
+  flex centering, canvas transform is removed, the `.cue` underline animation stops, and
+  every word/reveal/panel/guard element is forced to `opacity: 1 !important;
+  transform: none !important` — i.e. everything is visible, nothing is animated.
+- JS: `layout()` sets the film height to `auto` (skipping the `560vh` scroll-driven track)
+  when `matchMedia('(prefers-reduced-motion: reduce)').matches`, and the GSAP `matchMedia`
+  reduced-motion branch simply paints frame 0 and calls `readout(0)` once instead of building
+  any ScrollTrigger timeline.
+
+## 9. Responsive
+- Below 820px: `.rail` and the header `.readout` (guard number) are hidden entirely; panel
+  side margins collapse to `1.5rem`.
+- Below 460px: the appointment-book `.page` gets tighter padding; each `.fact` row stacks
+  its label above its value instead of sitting side by side.
+- No horizontal scroll or overflow at any width — verify at 390px.
+
+## 10. Interaction details
+- Every rail tick and the header readout are `aria-hidden`/decorative except where they're
+  real controls — the four rail ticks are real `<button>` elements with visible focus rings
+  (`:focus-visible` → 2px brass outline, 3px offset), not divs with click handlers.
+- `::selection` is styled brass-on-dark.
+- The `Book a chair` header pill and the close-section phone link both use real `tel:`
+  hrefs — they are functional tap-to-call links, not decorative.
+
+## 11. Licensing note (informational, not to be rendered on the page)
+The original source of this template loads GSAP/ScrollTrigger from a CDN rather than
+vendoring it — confirm the current GSAP license covers redistribution inside a page you
+ship commercially before shipping this as-is in a paid product.

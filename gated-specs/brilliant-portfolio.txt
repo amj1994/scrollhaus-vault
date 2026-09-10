@@ -1,0 +1,48 @@
+LIQUID — pixel-perfect portfolio recreation
+Scroll-driven, single-page 3D portfolio. TanStack Start v1 + React 19 + Vite 7 +
+Tailwind v4, react-three-fiber, framer-motion.
+
+STRUCTURE — three scenes on one continuously-scrolling page
+- Scene 1 (dark hero, 110vh): a sticky, transmissive icosahedron crystal
+  (react-three-fiber MeshTransmissionMaterial) centered on screen behind a white
+  headline, scrambled mono-text decode blocks, and an "OUR WORKS" pill.
+- Scene 2 (light, 100vh): same sticky crystal; background crossfades to a warm
+  light gradient, the headline cross-fades to a second line, and every UI token
+  (text color, marker color, SVG icon tint) inverts white→black, all driven by
+  scrollYProgress on the outer scroll container — nothing is two separate
+  components, it's one continuous scroll-linked interpolation.
+- Scene 3 ("Our Works", 700vh): a sticky 3D card stack of 13 project covers
+  (rotateX/scale/y offsets per distance-from-active), with a blurred copy of the
+  active image bulging up over the light section through a diagonal clip-path,
+  and a typography overlay (title/year/counter "01 / 13") that crossfades as the
+  active card changes.
+
+SCROLL MECHANISM — deliberately not touched
+This site drives everything off framer-motion's `useScroll` reading the
+scrollYProgress of its own inner `overflow-y-auto snap-y snap-mandatory`
+container (not the window). That native CSS scroll-snap plus scroll-linked
+value interpolation is already the site's own carefully-tuned "professional
+scroll effect" — adding Lenis on top would fight the snap semantics and desync
+the exact scroll-to-value math the prompt specifies, so per this project's
+scroll-jacking carve-out, no smooth-scroll library was added here.
+
+ASSETS
+All 13 project cover images (1.png, 2.png, 3.png, 4.png, Rectangle_11/20/21/23/
+24/25/26/27/28.png) were downloaded from the original https://qclay.design/
+lovable/liquid/ root — confirmed reachable, so the real originals are used
+as-is. Scene 1's centerpiece has no photo/video asset at all (it's a procedural
+WebGL crystal), so there was nothing hero-shaped to swap; per hero-only
+asset-swap scope, nothing was regenerated on this page.
+
+NOTABLE IMPLEMENTATION DETAILS
+- The Scene 3 typography overlay is `hidden md:block` — by the source spec's
+  own design it only appears at md breakpoint and above; on narrow viewports
+  only the card stack itself shows.
+- GlassCoin.tsx: icosahedronGeometry with 0 subdivisions (sharp facets, not a
+  smooth sphere), continuous pointer-reactive rotation, entrance spring scale,
+  and an IntersectionObserver that drops the R3F frameloop to 'demand' when the
+  canvas is off-screen.
+- ScrambleText.tsx: per-word scramble-decode animation used for the top-right
+  mono-text blocks and mid-line markers, each with its own base delay.
+
+Added 2026-09-10.

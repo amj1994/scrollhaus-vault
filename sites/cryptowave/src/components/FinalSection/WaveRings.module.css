@@ -1,0 +1,24 @@
+/* top/left/transform are supplied by the consumer's className - this only
+   sets the mechanics (absolute, zero-size anchor point) that make that
+   positioning meaningful. */
+.root {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ring,
+.arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.arc1 { opacity: 0.85; }
+.arc2 { opacity: 0.6; }
+.arc3 { opacity: 0.4; }
+.arc4 { opacity: 0.25; }
+

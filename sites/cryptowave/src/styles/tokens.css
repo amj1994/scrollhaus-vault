@@ -1,0 +1,140 @@
+/**
+ * Design tokens
+ * -----------------------------------------------------------------------
+ * Single source of truth for the visual language of the site. Every
+ * component should consume these custom properties rather than hard-coding
+ * raw values, so future sections stay visually consistent and any global
+ * tweak (rebrand, theming, contrast fix) only has to happen in one place.
+ *
+ * The reference layout was designed at a 1440px viewport. Fluid values
+ * below use CSS clamp() anchored loosely to that reference so the UI scales
+ * continuously between ~375px and 4K instead of jumping at breakpoints.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- */
+  /* Color: surfaces                                                   */
+  /* ---------------------------------------------------------------- */
+  --color-bg: #060606;
+  --color-bg-elevated: #0d0d0f;
+  --color-panel: #0c0c0e;
+
+  --color-surface-1: rgba(255, 255, 255, 0.04);
+  --color-surface-2: rgba(255, 255, 255, 0.06);
+  --color-surface-3: rgba(255, 255, 255, 0.09);
+
+  /* "BG2" - the frosted-glass fill used on small chips/buttons and the
+     balance card (mini pill, settings/action buttons, balance card). */
+  --gradient-surface-2: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-default: rgba(255, 255, 255, 0.14);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
+  /* Hairline border used on BG2 surfaces (pill, gear/action buttons). */
+  --color-border-hairline: #22202f;
+  /* Border used on the outer wallet card panel. */
+  --color-border-panel: #2c2d32;
+
+  /* ---------------------------------------------------------------- */
+  /* Color: text                                                       */
+  /* ---------------------------------------------------------------- */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.6);
+  --color-text-tertiary: rgba(255, 255, 255, 0.38);
+  --color-text-on-accent: #10090a;
+
+  /* ---------------------------------------------------------------- */
+  /* Color: brand accent (gold -> indigo), taken from the source SVGs  */
+  /* ---------------------------------------------------------------- */
+  --color-gold: #f6b03c;
+  --color-indigo: #6562ea;
+  --gradient-accent: linear-gradient(
+    128deg,
+    var(--color-gold) 12%,
+    var(--color-indigo) 88%
+  );
+  --gradient-accent-diagonal: linear-gradient(
+    135deg,
+    var(--color-gold) 0%,
+    var(--color-indigo) 100%
+  );
+
+  /* Decorative line color (see DecorativeLines component) */
+  --color-line: 244, 244, 244;
+
+  /* ---------------------------------------------------------------- */
+  /* Radii                                                              */
+  /* ---------------------------------------------------------------- */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --radius-xl: clamp(24px, 2vw + 12px, 40px);
+  --radius-pill: 999px;
+  /* Small "chip" surfaces (mini token pill, gear/action buttons):
+     13.333px at the 1440px reference. */
+  --radius-chip: clamp(10px, 0.93vw, 13.333px);
+
+  /* ---------------------------------------------------------------- */
+  /* Shadows                                                            */
+  /* ---------------------------------------------------------------- */
+  --shadow-panel: 0 40px 120px -30px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  --shadow-card: 0 20px 60px -20px rgba(0, 0, 0, 0.75);
+  --shadow-focus: 0 0 0 3px rgba(246, 176, 60, 0.45);
+
+  /* ---------------------------------------------------------------- */
+  /* Typography                                                         */
+  /* ---------------------------------------------------------------- */
+  --font-display: "Manrope", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
+    monospace;
+
+  /* Fluid type scale: clamp(min, preferred, max) */
+  --fs-display: clamp(2.5rem, 1.55rem + 3.2vw, 3.75rem);
+  --fs-h2: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+  --fs-lede: clamp(0.95rem, 0.85rem + 0.4vw, 1.15rem);
+  --fs-nav: clamp(0.78rem, 0.74rem + 0.18vw, 0.875rem);
+  --fs-button: clamp(0.85rem, 0.8rem + 0.2vw, 0.95rem);
+  --fs-balance: clamp(1.75rem, 1.5rem + 1vw, 2.25rem);
+  --fs-body-sm: clamp(0.78rem, 0.74rem + 0.16vw, 0.875rem);
+  --fs-caption: clamp(0.68rem, 0.65rem + 0.12vw, 0.75rem);
+
+  --lh-tight: 1.08;
+  --lh-snug: 1.3;
+  --lh-normal: 1.6;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.08em;
+
+  /* ---------------------------------------------------------------- */
+  /* Layout                                                             */
+  /* ---------------------------------------------------------------- */
+  --page-max-width: 1600px;
+  --page-gutter: clamp(20px, 5vw, 80px);
+  --section-padding-block: clamp(20px, 3vw, 40px);
+
+  /* ---------------------------------------------------------------- */
+  /* Motion                                                             */
+  /* ---------------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 160ms;
+  --duration-base: 260ms;
+  --duration-slow: 600ms;
+}
+
+/* Respect user motion preferences globally */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

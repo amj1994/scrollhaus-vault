@@ -1,0 +1,53 @@
+SIXSENSE — Let's find the right references for your work
+AI reference-search start page: a hand-built canvas pixel-grid background that
+reacts to the cursor, a layered folder/light-glow illustration with three
+floating reference cards, and a prompt box with a typewriter placeholder and a
+custom spinning send button. Plain Vite + React 19 + TypeScript + Tailwind v4 +
+framer-motion + lucide-react + react-router-dom (per the source prompt's own
+stack — not TanStack Start, unlike most other builds in this gallery).
+
+STACK
+- Two <canvas>-based PixelGrid instances (left/right) render a 12×16 grid of
+  32px glass tiles, masked with a radial gradient so they fade toward center.
+  On mount, ~35% of cells reveal in a shuffled Fisher-Yates order over ~300-
+  400ms; afterward an ambient loop continuously flickers a few random cells,
+  and a window-level pointermove listener computes an organic "blob" radius
+  around the cursor (three summed sine terms) that lights up nearby cells at a
+  higher fill rate, with edge cells decided by a deterministic 2D noise
+  threshold — all rasterized once into offscreen canvases per sprite and
+  redrawn each frame, not real DOM nodes per tile.
+- A 10-layer absolutely-positioned folder/glow illustration plus three
+  floating reference-image cards that grow in from a tiny seed near the folder,
+  then settle into an infinite per-card float/rotate loop that freezes (and the
+  hovered card scales up) on hover.
+- A hand-rolled typewriter effect cycling five prompt phrases, and a send
+  button with its own rAF-driven spinning conic-gradient border that eases its
+  angular speed toward a hover/idle target rather than snapping.
+- No backend, single `/` route via react-router-dom.
+
+ASSETS — none swapped, all referenced live from the original CDN
+Per the source prompt's own `const A = "https://qclay.design/lovable/
+sixsense"` pattern, every remote asset (logo, folder/light SVGs, the three
+reference-card images, toolbar icons, arrow/dots sprites) is referenced by its
+live CDN URL, matching the "GroundAI-style" asset architecture used elsewhere
+in this batch. The six tile SVGs are the one exception: the prompt explicitly
+calls them out as local assets ("Local assets (in public/tiles/)"), so those
+were downloaded and self-hosted under public/tiles/ while everything else
+stays remote.
+
+BUG FOUND AND FIXED DURING VERIFICATION
+The three floating cards initially rendered invisible after their entrance
+animation — a `settled` boolean flipped the card's `animate` object from an
+entrance target (`{opacity, width, height, left, bottom, rotate}`) to a
+completely different idle-loop shape (`{y, rotate, scale}`), and when
+framer-motion's `animate` prop drops keys between renders it stops controlling
+them rather than holding their last value — so opacity/width/height/left/
+bottom froze at their `initial` (invisible, 20×20, seed-position) values the
+moment `settled` became true, before the entrance transition had genuinely
+finished driving them to target. Fixed by keeping every property present in
+`animate` on every render (entrance target values stay explicit even after
+settling) and only switching the *transition* config for `y`/`rotate` between
+a one-shot ease-out (entrance/hover-freeze) and an infinite loop (idle), so
+framer-motion never has a reason to abandon a property mid-flight.
+
+Added 2026-09-10.

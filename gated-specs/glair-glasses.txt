@@ -1,0 +1,118 @@
+Build a single-page site called **GLAIR** — a smart-glasses landing page. Recreate it EXACTLY as
+specified: stack, file layout, colors, spacing, copy, and animation timing are all intentional.
+
+## 1. Stack & project setup
+- Vite + React 19 + TypeScript + Tailwind CSS v4 (CSS-first `@theme` config, no tailwind.config
+  file) + framer-motion for every animation.
+- Theme: pure black (#000) alternating with light stone/neutral sections. White text on dark,
+  near-black (neutral-900) text on light. Acid green `#3BFA45` (font-condensed only) reserved
+  exclusively for tech/AR HUD readouts — timestamps, battery %, translation overlays. Muted sage
+  `#9DBFB8` for eyebrow labels, one highlighted heading word/phrase per section, active dots, and
+  the footer's full background. Two fonts: a geometric grotesk sans for everything else, a
+  compressed grotesk for HUD text only (the source used Satoshi + DIN Condensed; substituted here
+  with Manrope + Oswald since the original font files aren't licensed for reuse).
+- One custom breakpoint for the whole site: Tailwind's `lg` redefined to 900px — used only by
+  Section5–9 (mobile stacked vs. desktop fluid layout) and Section1 (`max-lg:` hero shift).
+
+## 2. Page composition (App.tsx)
+Section1 (hero) → a shared `relative` wrapper holding Section2Reveal, Section3, Section4Reveal,
+Section6, Section7, Section8, Section9, Section10 plus a sticky bottom Dock nav spanning that
+whole wrapper → Section11 (footer/CTA).
+- **Section2Reveal**: 310vh scroll wrapper pinning a 100vh sticky stage; Section2's 3-step
+  draw/hold/undraw sequence is driven entirely by scrollYProgress through this wrapper (equal 1/3
+  zones per step), never by a timer.
+- **Section4Reveal**: 250vh scroll wrapper. 0–35% scrubs Section4's background video to its end
+  via `video.currentTime`; 35–65% slides Section5 up from below to cover Section4; 65–75% fades
+  and drops Section4, then hides it (visibility:hidden) once covered. Section5 renders INSIDE this
+  wrapper, not as a sibling section.
+
+## 3. Section1 — hero
+A real autoplaying, looping, muted video fills the screen, viewed through an animated ellipse-
+shaped lens cutout in a full-bleed backdrop-blur layer (the blur never moves — only the cutout
+slides up into place on load, so no gap opens at the edges). Every HUD element (lens frame image,
+timestamp `14:36 / Mon, Aug 5`, battery `86%`, a 34-second progress bar, volume/pause/more icons)
+is positioned by projecting authored coordinates from a fixed 1920×980 design canvas through an
+object-cover-equivalent scale+crop, then a shared group scale/shift — so it stays visually locked
+to the ellipse at any viewport size. Mobile (<900px) uses a smaller group scale and shifts the
+whole hero visual up 90px. Headline: "Your Second" / "Layer of Vision", per-letter randomized
+fade-in, then tagline, description, and a PRE-ORDER pill button.
+
+## 4. Section2 — How It Works (scroll-scrubbed 3-step sequence)
+A frozen "monument" (2560×1424px glasses diagram + connector lines + AR lens HUD text) scaled as
+one rigid unit into a measured slot — `Math.min(slotW/2560, slotH/437)`, NOT a CSS-only
+`calc(100vw/2560px)`, which would clip the monument on any short-relative-to-width viewport. Each
+of 3 steps (Perceive / Process / Respond) owns an equal third of scroll progress, subdivided into
+short draw / long hold / short undraw phases; connector lines and the lens HUD text remount
+(`key={currentStep}`) so they redraw fresh each step. Steps 2–3 show a rotated, per-lens AR
+overlay (ScrambleText: each character reveals at a random time, not left-to-right) — a
+"Translating…" line, then a CN/EN phrase pair.
+
+## 5. Section3 — What Can GLAIR Do (feature carousel)
+Light stone background with a CSS-only VHS/glitch effect: 15 clipped horizontal slices of the
+same image, each on its own randomized animation delay, gated by a shared 3s-active/1.2s-quiet
+cycle that only runs once in view. An infinite auto-advancing 5-slot carousel (every 3.8s) over
+just 3 feature cards (Perceive / Object Recognition / AR Navigation), fading/blurring toward the
+edges — not a manual or draggable carousel.
+
+## 6. Section4 — Design by Glair (scroll-scrubbed video)
+Background video's `currentTime` is driven manually from scroll (no autoplay/loop attributes). A
+precisely rotated diagonal light streak (`mix-blend-color-dodge`, `blur-[1.5px]`, 984×1639px,
+rotate(-82.49deg), 3-stop gradient with the sage accent at 45%) sits over it.
+
+## 7. Section5 — Two Signature Colors (color picker)
+Desktop: both Graphite and Pearl glasses images render simultaneously, absolutely positioned by
+percentage inside a fluid `aspect-[1840/800]` box; picking a color just nudges that image up 25px,
+never swaps/hides. Mobile: a genuinely different DOM — only the selected image renders, swapped
+via `key`. The info card needs TWO independent scale factors: a height-only `cardScale` (the box
+already handles width) and a separate `titleScale` applied only to the nowrap title, since a
+uniform scale can never fix a title that's wider than its own card.
+
+## 8. Section6 — No Buttons / Discrete Tech (two-card row)
+Same fluid-box + dual-scale pattern as Section5, once per card. Left card zooms/pans in on
+scroll-into-view (scale 1→1.1, x 0→-20); right card rotates in (-90deg→0). Different entrance
+animations, not shared.
+
+## 9. Section7 — Featherlight Frame
+Same fluid box, but only the height-only scale (its copy wraps normally, no nowrap title to
+protect). "less than 38g" is bolded via `AnimatedLines`' own `**bold**` markup, not a hardcoded
+`<strong>`.
+
+## 10. Section8 — Swappable Lenses / Unisex Fit
+Two cards with independent top-offsets (71.875% / 76.75%) and the same per-card dual-scale
+pattern as Section6. Text reveals via framer-motion `staggerChildren` variants instead of
+AnimatedLines. One card is light-text-on-dark, the other dark-text-on-light — both bold-text
+colors must match their card.
+
+## 11. Section9 — Use Cases (horizontal snap-scroll)
+CSS scroll-snap row (`snap-x snap-mandatory`), not a JS carousel. Card order is deliberately
+PhotoCard, then an InfoCard ("Depth up to 5m" pills), then 4 more PhotoCards — the InfoCard is
+spliced in second, not appended last. 4 progress dots driven by real `scrollLeft/scrollWidth`
+ratio. Each PhotoCard's photo panel slides up 64px on hover to reveal description text underneath.
+
+## 12. Section10 — Tech Specs
+16 specs in 4 rows of 4; only the first 3 rows (12 cards) show by default, fading in with a
+"wave" stagger computed from `(row+col)*0.07s`. The 4th row (Bluetooth/Location/Audio/
+Microphones) is height/opacity-animated open only on "View More" — never `display:none`.
+Section10 has its OWN glitch-background component (vertical slices, `-vertical` suffixed classes)
+— a separate implementation from Section3's horizontal-slice version, not shared.
+
+## 13. Section11 — Ready to See Smarter (footer/CTA)
+"Ready to See Smarter?" headline, PRE-ORDER NOW button, then a footer bar with a solid sage-green
+(`#9DBFB8`) background — the one place that accent color fills a whole background rather than
+accenting text.
+
+## 14. Shared primitives
+- `LetterFadeIn`: per-letter opacity fade, each letter's delay independently RANDOMIZED (not a
+  left-to-right typewriter stagger).
+- `AnimatedLines`: measures real wrapped line breaks at runtime via a hidden measurement pass,
+  then reveals each line as a mask-clipped upward slide, staggered by line index. Supports
+  `**bold**` markup.
+- `Dock`: the sticky bottom nav riding pinned across Section2 through Section10.
+
+## 15. Assets
+All 57 image/SVG/video assets are original and self-hosted in `public/assets/`, not hotlinked
+from a third party (one background image absent from the source template was substituted with a
+same-toned in-house asset, since it renders at `blur-[18px]` behind other content). The only
+asset replaced from the original design is Section1's hero background, which is a real generated
+video loop rather than the original template's stock footage; Section4's scroll-scrubbed
+background video is unchanged, self-hosted as-is.

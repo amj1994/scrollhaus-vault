@@ -1,0 +1,17 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(64px, 6vw, 82px);
+  height: clamp(64px, 6vw, 82px);
+}
+
+.badge {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 10px 30px -8px rgba(246, 176, 60, 0.4);
+  border-radius: 50%;
+}

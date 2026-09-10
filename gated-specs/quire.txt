@@ -1,0 +1,48 @@
+Quire — Notebook Marquee (reskinned from a supplied template, original theme)
+
+Stack: plain static HTML/CSS/vanilla JS — no framework, matching the source
+template's own format exactly. No build step; served as-is.
+
+ORIGIN OF THIS SITE
+The user supplied a complete, self-contained HTML file ("Foliom — Book
+Marquee"): a navbar, a giant hero wordmark, category pills, and a tilted,
+continuously auto-scrolling marquee of book covers built from layered
+skewed divs (hinge, back cover, fanned page layers, front cover) to fake a
+3D page-edge thickness effect on hover-lift. Instruction was explicit:
+change the name, the color palette, and the underlying concept, while
+keeping the same base mechanism — and generate any new imagery via
+Higgsfield rather than reusing the template's own placeholder/third-party
+image URLs.
+
+WHAT WAS KEPT (the base mechanism, unchanged)
+- The exact marquee/book construction logic: skewed page-fan layers,
+  hover-lift-and-push interaction (CSS :has() selectors driving neighbor
+  spacing), the infinite marquee scroll animation, the tilt and fade-mask
+  treatment, all responsive breakpoints.
+- The overall page structure: fixed navbar, oversized hero wordmark,
+  category pill row, marquee beneath.
+
+WHAT WAS CHANGED (per explicit user direction)
+- Concept: pivoted from "Foliom", a general book-reading marquee, to
+  "Quire", a notebooks-and-journals marquee — a different product concept
+  that still makes sense with the page-fan visual technique (notebooks are
+  bound paper goods too, so the fanned-page effect reads naturally; the
+  same effect would not make sense for an unrelated product category).
+- Brand name, nav copy, CTA copy, and category pills all rewritten
+  (Shop / Collections / Journal / About; Dot Grid / Lined / Sketch /
+  Travel / Leather Bound).
+- Palette: shifted from a neutral black/cream scheme to a warm
+  espresso-brown background with cream/terracotta accents.
+- Cover art: the template's book-cover slots (several of which referenced
+  non-existent local filenames and would have rendered blank, and others
+  referenced a third party's own Higgsfield-generated images) were
+  replaced with 10 original notebook/journal product photographs generated
+  fresh via Higgsfield for this build — leather, linen, marbled paper,
+  kraft, velvet, canvas, embroidered cloth, solid terracotta, recycled
+  paper, and gold-foil-on-black — each a distinct material/finish so the
+  marquee reads as a real varied catalog rather than repeated stock art.
+
+DEVIATIONS
+None from a formal fidelity spec, since the instruction was explicitly to
+change name/color/concept rather than replicate — this is a deliberate
+reskin, not a clone.

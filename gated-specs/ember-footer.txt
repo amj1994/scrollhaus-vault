@@ -1,0 +1,81 @@
+Ember — Footer (original design, not from a prompt file)
+
+Stack: Vite + React 18 + TypeScript + plain CSS (no Tailwind — matches the
+brief's own "ordinary CSS" spec). Fonts: DM Sans (body), Epilogue Black
+(headlines), both real webfont files served locally.
+
+ORIGIN OF THIS SITE
+The user supplied an extremely detailed "fidelity task" specification for a
+single-page footer — exact CSS, exact copy, exact SVG logo path, exact
+CloudFront video URL, and a hand-calibrated 66-point cursor-gaze lookup
+table — that was, on inspection, a reverse-engineered clone of a real
+commercial studio's actual live website, including an explicit instruction
+to scrub all trace of the original company's name from the output. Rather
+than reproduce someone else's proprietary logo and hosted video asset
+verbatim, the user's own final instruction was followed instead: build the
+same layout and interaction *mechanism* as inspiration, with original
+colors, copy, and a freshly generated character video (Higgsfield), and no
+traced logo.
+
+WHAT WAS KEPT FAITHFUL (general technique, not owned content)
+- The exact vw-based CSS layout system: three-column desktop layout (left
+  info column, centered logo, right contact-style column), same breakpoint
+  and stacking rules at max-width:700px.
+- The cursor-driven gaze-scrubbing algorithm: object-fit:cover scale math,
+  8px dead-zone, atan2 angle computation, nearest-angle table lookup with a
+  1/240s seek offset, rAF-coalesced seeking, mobile-loop vs desktop-paused
+  switching via matchMedia, prefers-reduced-motion handling.
+- Footer-only scope: no header, hero, cards, forms, or extra sections. No
+  real navigation destinations — all nav/social/contact elements are static
+  display text, not links.
+
+WHAT WAS CHANGED (per explicit user direction)
+- Brand: "ember", with an original four-point spark mark drawn from scratch
+  (not tracing the source logo's path data).
+- Palette: warm coral/peach/cream instead of the source's lavender.
+- Copy: original throughout ("curiosity built well", "start something with
+  us today", etc.) — not the source's exact lines.
+- Video: generated via Higgsfield — a coral fuzzy creature holding a gold
+  heart, pale sage-cream background.
+
+THE CURSOR-GAZE CALIBRATION — the real engineering problem
+Since the video is original, there was no existing hand-calibrated gaze
+table for it. Two Higgsfield generations were made asking for the
+character's eyes to trace one full continuous circular loop; both stopped
+short, each tracing only ~200-220 degrees of the circle before reversing or
+plateauing rather than completing the loop — apparently a real limitation
+of how the current video model interprets sustained mechanical motion
+instructions, not something reliably fixable by re-prompting.
+
+A frame-by-frame pupil detector was written (pixel-cluster centroid,
+filtered against the character's fur tone) to extract real (time, angle)
+pairs from the video, with outlier smoothing (angle-unwrapped median +
+moving-average filter) to remove blink/motion-noise glitches. This produced
+genuine calibration data for ~213 degrees of the circle (roughly right,
+through down, to left).
+
+For the remaining ~145-degree arc (left, through up, to right) where no
+real footage exists, a hybrid technique was built: the real video is used
+whenever the cursor angle falls in the covered arc; for the uncovered arc,
+the video freezes on a fixed, colour-sampled neutral frame, a small
+sclera-matched patch (blurred radial fill, colour sampled directly from that
+frame) hides the frame's own small real pupil offset, and a drawn pupil dot
+(colour also sampled from the real footage) is positioned via the same
+polar-coordinate math, with its orbit radius interpolated between the two
+real boundary frames' actual measured radii so the handoff at each boundary
+is not visible. A short angular crossfade (~7 degrees each side) blends
+between real-video mode and overlay mode. Verified with a full 360-degree
+cursor sweep in 10-degree steps — continuous motion throughout, no
+double-pupil artifacts, no snapping.
+
+DEVIATIONS
+None from a formal spec, since the literal source spec was not followed
+(see above) — this is an original design and original video built around
+the same layout/interaction pattern, per explicit user direction.
+
+PREVIEW CAPTURE NOTE
+This page has no scroll (a single min-height:100vh footer) — the compelling
+motion is the cursor interaction, not scroll-driven reveals. The gallery
+preview was captured with a cursor sweep (two full circles around the
+character's eyes) rather than the usual scroll-timeline capture used for
+every other site in this gallery.

@@ -1,0 +1,184 @@
+Build a single-page website called **JUNIPER PATH** — a calm, editorial landing page for an integrative psychiatric (PMHNP) telehealth practice, built around a two-column video hero and a full-viewport video footer. Recreate it EXACTLY as specified: every colour token, clamp(), easing curve, animation delay and line of copy is intentional. Do not substitute, paraphrase or "improve" anything.
+
+## 1. Stack & output
+- ONE file: index.html in the project root. No build step, no framework, no external JS, no CSS file, no bundler.
+- Everything inline: markup, a single <style> block in <head>, a single <script> before </body>, all icons as inline SVG.
+- Plus one local folder, assets/, holding exactly two images (see section 3).
+- Must open correctly straight from the filesystem over file://.
+
+## 2. Head
+- <!DOCTYPE html>, <html lang="en">, <meta charset="UTF-8">
+- <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+- <title>Juniper Path — Integrative psychiatry across Arizona</title>
+- Fonts (Google), preconnect to fonts.googleapis.com and fonts.gstatic.com (crossorigin):
+  family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@300;400;500;600;700&display=swap
+- Favicon: an inline data:image/svg+xml URI drawing the brand mark (upright oval frame containing a sprig), stroke #1B5E43.
+
+## 3. Assets
+Hero background video (16:9, 10s, 24fps, silent, loops) — abstract pale-mint translucent glass ribbons clustered on the RIGHT of frame on a near-white cool-grey seamless ground. The LEFT 55 percent of the frame is deliberately empty; that is where the white panel sits.
+  https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260831_234904_80126b6f-a9f2-4c64-904f-bbecd6fb479a.mp4
+Hero poster:
+  https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260831_232824_93a0252b-e9f2-432f-9961-555a2e458100.png&w=1920&q=85
+Footer + integrative-band video (16:9, 10s, 24fps, silent, loops) — a hand-drawn ink landscape on cream paper: layered misty mountains, a still lake, pine-covered rocky outcrops framing both edges, two cranes gliding across the sky. Static camera; only the cranes move.
+  https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260901_122529_931c22c8-8d2d-47c0-ad51-b97f56a91e42.mp4
+Footer poster / reduced-motion still:
+  https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/4f690bd1-881a-4192-82f2-d714d34c8fb9.png
+assets/provider.jpg — 4:5 studio portrait, 1000x1242. Three-quarter-length, charcoal blazer over a cream collared shirt, seamless near-white cyclorama graduated brightest behind the head, broad soft key from camera left, no hard shadows. Backdrop must measure 88-96 percent luminance and the head must sit at roughly 22 percent of frame height, because the hero crops this image to a circle at object-position 50% 22%.
+  https://d8j0ntlcm91z4.cloudfront.net/user_3Gpc1uBfShDZ8FrEtDLXM23sY6t/hf_20260907_073538_18151fd6-78d6-4f41-8233-9b756640bd2b.png
+assets/hero.jpg — 16:9 warm interior still used only as a 94px rounded thumbnail in the third hero card. Generate one: a quiet sunlit corner with a linen armchair, a low pale-oak table, a sprig of green foliage in a ceramic vase, soft daylight from a window, muted sage and oatmeal palette, large simple shapes that stay legible at thumbnail size, no people and no text.
+
+WARNING: the two CloudFront video URLs are hotlinked from a bucket you may not control. Re-host them before shipping anything you depend on.
+
+## 4. Design tokens (:root)
+--ink:#0E2E24; --ink-soft:#4C6B5D; --ink-faint:#7B9587;
+--pine:#1B5E43; --pine-deep:#113E2D; --brand:#37974D; --sage:#7DA48C;
+--haze:#DFEAE1; --paper:#F1F5F1; --panel:#FFFFFF; --box:#F2F6F2;
+--line:#DDE7E0; --line-soft:#E9F0EA; --sand:#E9E3D7; --alert:#8C3A2B;
+--radius-panel:30px; --radius-box:18px; --pad:clamp(18px,2.2vw,34px); --max:1240px;
+--display:"Fraunces",Georgia,"Times New Roman",serif;
+--body:"Inter Tight",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+--ease:cubic-bezier(.16,1,.3,1);
+--fs-nav:clamp(.9rem,.55vw + .75rem,1.02rem);
+
+Resets: *,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;overflow-x:clip}
+html.nav-lock,body.nav-lock{overflow:hidden}
+body{margin:0;font-family:var(--body);color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;overflow-x:clip;-webkit-tap-highlight-color:transparent;line-height:1.6}
+img{max-width:100%;display:block} button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+a{text-decoration:none;color:inherit} h1,h2,h3,h4{margin:0;font-weight:400;letter-spacing:-.02em} p{margin:0} ul{margin:0;padding:0;list-style:none}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:3px;border-radius:4px}
+
+WARNING: use overflow-x:clip, NOT overflow-x:hidden. hidden on body turns body into a scroll container, which fights position:sticky (used by the provider photo) and makes window.scrollY and the body scrollport disagree.
+
+## 5. Shared primitives
+.wrap{width:100%;max-width:var(--max);margin:0 auto;padding-inline:clamp(20px,5vw,56px)}
+.sec{padding-block:clamp(64px,9vh,132px);position:relative}
+.eyebrow — inline-flex, gap .6em, .72rem, weight 600, letter-spacing .16em, uppercase, colour var(--pine), margin-bottom clamp(16px,2.4vh,26px); ::before is a 26x1.5px bar in var(--brand).
+.h2{font-family:var(--display);font-size:clamp(2rem,3.9vw,3.55rem);line-height:1.06;letter-spacing:-.028em;max-width:19ch;text-wrap:balance} .h2 em{font-style:italic;color:var(--pine)}
+.lede{margin-top:clamp(16px,2.4vh,24px);max-width:62ch;font-size:clamp(1.02rem,.5vw + .9rem,1.19rem);line-height:1.66;color:var(--ink-soft)}
+.h3{font-family:var(--display);font-weight:500;font-size:clamp(1.22rem,1.35vw,1.55rem);line-height:1.22}
+Buttons: .btn is a pill, padding 9px 9px 9px clamp(20px,1.8vw,30px), transition transform .28s var(--ease). .btn--solid is var(--pine) on white text, hover var(--pine-deep) + translateY(-2px). .btn--ghost is a 1px var(--line) border on rgba(255,255,255,.6). .btn__icon is a clamp(32px,2.4vw,40px) white circle holding a 46 percent arrow SVG.
+Scroll reveal: .reveal{opacity:0;transform:translate3d(0,26px,0);transition:opacity .8s ease,transform .9s var(--ease)} and .reveal.is-in{opacity:1;transform:none}. data-d="1".."6" adds transition-delay in .08s steps.
+
+## 6. Hero (two-column, full viewport)
+.hero{position:relative;height:100vh;height:100svh;min-height:660px;overflow:hidden;isolation:isolate}
+.hero__bg — the video, position:absolute;inset:0;width/height:100%;object-fit:cover;z-index:-2;filter:saturate(.82) hue-rotate(-12deg). Attributes: autoplay muted loop playsinline preload="auto" + poster.
+.hero__scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(241,245,241,.62) 0%,rgba(241,245,241,.14) 46%,rgba(241,245,241,0) 72%)}
+.hero__inner{height:100%;padding:clamp(10px,1.1vw,20px);display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,.7fr);gap:clamp(10px,1.1vw,20px)}
+.panel — white, border-radius var(--radius-panel), padding var(--pad), flex column, box-shadow 0 24px 60px -30px rgba(14,46,36,.3). Contains .topbar, .stage, .cards.
+
+.topbar — flex, space-between. Left: .nav-left holding the wordmark and the menu button. Right: .connect pill.
+Wordmark is TEXT, not an image: <span class="wordmark"><span>Juniper</span>Path</span>
+.wordmark{font-family:var(--body);font-weight:700;font-size:clamp(19px,1.55vw,26px);letter-spacing:-.032em;line-height:1;color:var(--ink);white-space:nowrap} .wordmark span{color:var(--brand)}
+.menu — two <span> bars only, 32px wide, 2px tall, gap 5px; they rotate 45/-45deg into an X when .is-active. Label "menu", lowercase.
+.connect — 1px var(--line) pill holding a "MON-FRI" label and .connect__tel, a dark pill with a phone glyph reading (480) 555-0168.
+
+WARNING: scope the topbar brand rules as .topbar .brand, never bare .brand. The footer has its own .brand block; a bare .brand{display:flex} silently lays the footer lockup, blurb and contact list out in one row and the whole footer column collapses.
+
+.stage — flex column, centred, text-align centre. Signature element, in order:
+  1. .dial — the hour dial. A clamp(104px,9vw,150px) square. Inside: an SVG ring (viewBox 0 0 100 100, rotate(-90deg)) with .dial__track (r=48, stroke var(--line), width 2) and .dial__arc (r=48, stroke var(--brand), width 2.5, round cap, stroke-dasharray 302, dashoffset 302) that draws itself; .dial__photo inset 11 percent, border-radius 50 percent, holding assets/provider.jpg at object-position 50% 22%; and .dial__badge, a dark pill pinned to bottom centre reading "A FULL HOUR".
+  2. .headline — Fraunces 300, clamp(2.05rem,4.3vw,4.3rem), line-height 1.02, letter-spacing -.038em. Markup exactly: Feel like yourself<br>again, <em>from home.</em>
+  3. .hero__sub — max-width 46ch: "Integrative psychiatry for kids, teens, and adults across Arizona. One full hour at your first visit, and a plan built around your life."
+  4. .cta-row — "Request an appointment" (.btn--solid, arrow icon) and "Check my insurance" (.btn--ghost).
+.cards — grid of 3 equal columns, gap clamp(10px,.95vw,16px), each .card min-height clamp(146px,18.5vh,206px) on var(--box):
+  INSURANCE — shield-check bubble + "Medicare, BCBSAZ, Aetna, UHC, Cigna, TriWest, VA, AHCCCS and more"
+  SELF-PAY — a .stats row: $220 / Evaluation, a 1px divider, $120 / Follow-up (numbers in Fraunces)
+  WHO WE SEE — "Kids, teens, and adults, anywhere in Arizona" beside the assets/hero.jpg thumbnail
+
+.side (column 2) — floats over the video. .status-chip top-right: a pulsing 8px var(--brand) dot plus "Now accepting new patients in Arizona" on rgba(255,255,255,.92) with backdrop-filter blur(10px). .arrow-fab bottom-right: a clamp(62px,5.4vw,90px) white circle with a down arrow, href #how, hover translateY(4px).
+
+## 7. Nav overlay (sibling of .hero, direct child of body)
+.navmenu{position:fixed;inset:0;z-index:220;visibility:hidden;transition:visibility 0s linear .5s} .is-open flips visibility with 0s delay.
+.navmenu__scrim — rgba(10,34,26,.42) + backdrop-filter blur(9px) saturate(1.1), fades over .5s cubic-bezier(.22,1,.36,1).
+.navmenu__sheet — left sheet, width min(440px,89vw), border-radius 0 clamp(20px,2.4vw,34px) clamp(20px,2.4vw,34px) 0, transform translate3d(-102%,0,0), transition transform .62s var(--ease); closing is faster at .44s. overflow-y:auto; overscroll-behavior:contain.
+.navmenu__head — position:sticky;top:0;z-index:2;background:var(--panel);padding-bottom:10px. Holds the wordmark and a 44px round close button that rotates 90deg on hover.
+.navmenu__list — 8 items, each li fading up with transition-delay .13s .18s .23s .28s .33s .38s .43s .48s: How it works, Integrative, What we treat, Your first visit, Your provider, Facilities, Insurance and fees, FAQ. Links are Fraunces clamp(19px,3.3vw,25px), padding clamp(8px,1.15vh,14px) 2px, and slide padding-left to 12px on hover while a trailing arrow SVG fades in.
+.navmenu__foot — label, the phone number in Fraunces var(--pine), and a "Request an appointment" .btn--solid; fades in at .5s.
+
+WARNING: focus the first link with focus({preventScroll:true}). A plain focus() scrolls the sheet and pushes the sticky header with the close button off-screen. The sticky header is the second half of that fix.
+
+## 8. Sections, in order
+1. .how — white rounded slab pulled up with margin-top clamp(-40px,-4vh,-20px), z-index 2. Eyebrow "Getting started is simple", h2 "Start with a <em><span style=white-space:nowrap>two-minute</span></em> request." then three .step columns (border-top 1px var(--line); a 44px var(--brand) bar wipes in over 1s when .is-in). Steps: "Send a request or call" / "We verify your insurance" / "Meet Dr. Marsh by video".
+2. The hour contrast — a two-column .hour grid. Left: eyebrow "Why people come to us", h2 "Tired of rushed visits and care that never looks at the <em>whole person?</em>", a lede, and a 6-item .checklist with check-mark SVGs. Right: two SVG rings side by side, both r=45 with stroke-dasharray 283 — the first (sage) animates to dashoffset 212 (25 percent) labelled "15 min / The usual med check", the second (var(--brand)) animates to 0 labelled "60 min / Your first visit here". This contrast IS the page's thesis; do not drop it.
+3. Services — three .svc cards on var(--panel) with 1px var(--line-soft), hover translateY(-5px): Psychiatric evaluation, Ongoing medication management, Care for the whole family. Each has a 46px rounded-square icon tile on var(--haze) and a bulleted list.
+4. .integrative — the dark cinematic band. background var(--ink); .integrative__media holds the ink-landscape video at z-index -2 with filter saturate(.5) hue-rotate(-14deg) brightness(.62); .integrative__veil at z-index -1 is a radial-gradient(120% 90% at 15% 25%, rgba(14,46,36,.55), rgba(14,46,36,.86) 62%, rgba(14,46,36,.95)). Eyebrow and em turn #A8D8B4. Contains: three glass .pillar cards (Body / Mind / Lifestyle) on rgba(255,255,255,.055) with backdrop-filter blur(14px); an .origin blockquote with a 2px #A8D8B4 left border; a 3x2 .facets grid separated by 1px rgba(255,255,255,.14) gaps (Sleep, Lab work, Nutrition and movement, Medication review, Stress and support, Your goals); a .research row of three var(--sand) cards whose numbers count up (2x, 3x, NNT 2); and a .qs two-column block with six questions in .qlist that slide 4px right on hover.
+5. #treat — 4-column .cond-grid of 8 conditions. Each card gets a 2px var(--brand) left bar that scaleY(0)->1 on hover.
+6. #first-visit — a 5-step .timeline. A 2px var(--line) rail with .timeline__prog filling it as a linear-gradient(180deg,var(--brand),var(--pine)) driven by scroll. Each .tstep has a 16px dot that turns var(--brand) with a 5px rgba(55,151,77,.15) halo when .is-in, an uppercase step number, a var(--haze) time pill, and an optional italic aside with an info glyph.
+7. #provider — two columns on var(--panel). Left is position:sticky top:32px holding the 4:5 portrait (border-radius 24px, image scales 1.03 over 1.4s on hover) and a dark quote card. Right is the five-paragraph bio plus nine .chip credentials.
+8. Coverage — a two-column block: copy and dashed .city pills (Phoenix, Tucson, Flagstaff, Prescott, Kingman, Show Low, Yuma) beside four .state rows, the first (Arizona) filled var(--pine) and marked "Seeing patients", the rest "Coming soon".
+9. #facilities — dark var(--ink) section, two columns: the programme copy with a checked list, beside a white .formcard with the facility enquiry form.
+10. #insurance — a full-bleed .payers marquee, masked at both edges with a linear-gradient mask, translating -50 percent over 46s and pausing on hover. 13 plan cards, each a logo or a Fraunces text badge plus name, sub-label and an "In network" tag.
+11. #fees — two .feecard columns: self-pay rates with big Fraunces prices, and a dark var(--ink) "Using insurance" card with pill-shaped plan names.
+12. #faq — 10 items.
+13. #request — two columns: contact lines and a var(--alert)-bordered crisis notice, beside the patient request .formcard.
+
+## 9. FAQ — use native disclosure, not JavaScript
+Each item is <details class="qa"><summary class="qa__q">…<span class="qa__ic">plus icon</span></summary><div class="qa__a"><p>…</p></div></details>.
+.qa__q{list-style:none;cursor:pointer} plus .qa__q::-webkit-details-marker{display:none} and .qa__q::marker{content:""}
+.qa[open] .qa__ic rotates 45deg and fills var(--pine).
+.qa[open] .qa__a{animation:qa-open .4s var(--ease) both} where qa-open goes from opacity 0 / translate3d(0,-6px,0) to opacity 1.
+
+WARNING: do not animate the panel with JS height measurement or with grid-template-rows 0fr->1fr. Both were tried and both failed here — offsetHeight reads 0 while the panel is clipped, and the fr row would not expand. Native details needs no JS, keeps keyboard and screen-reader behaviour, and cannot mismeasure.
+
+## 10. Footer — full viewport, video, no scrim over the art
+.site-footer{position:relative;isolation:isolate;display:flex;flex-direction:column;min-height:100vh;min-height:100svh;overflow:hidden;background:var(--sand);padding:clamp(2.25rem,4.5vh,4rem) max(clamp(1.25rem,4vw,4.5rem),env(safe-area-inset-right)) max(clamp(1.5rem,3vh,2.75rem),env(safe-area-inset-bottom)) max(clamp(1.25rem,4vw,4.5rem),env(safe-area-inset-left))}
+.footer-media{position:absolute;inset:0;z-index:-2} .footer-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center bottom;filter:hue-rotate(-26deg) saturate(1.05);animation:fade-in 1.35s ease both}
+.footer-grid{display:grid;gap:clamp(1.5rem,3vw,3.25rem);grid-template-columns:minmax(240px,1.5fr) repeat(3,minmax(128px,.82fr)) minmax(250px,1.2fr)} — brand, Care, Patients, Legal, Stay in touch.
+Brand column: .brand-mark SVG (viewBox 0 0 96 120, fill none, stroke currentColor, width 2) drawing an oval frame around a sprig, beside .brand-name in Fraunces 500; then the blurb and a 3-row .contact-list.
+Newsletter: .subscribe is a flex row with a 1px var(--ink) border on rgba(255,255,255,.42); the submit button is clamp(56px,4vw,66px) wide, var(--ink), hover var(--pine).
+Legibility wash, DESKTOP ONLY, inside @media (min-width:1101px): .footer-media::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,var(--sand) 0%,rgba(233,227,215,.95) 32%,rgba(233,227,215,.62) 46%,rgba(233,227,215,.22) 60%,rgba(233,227,215,.30) 74%,rgba(233,227,215,.86) 88%,var(--sand) 100%)} — this backs the copy above and the legal bar below while leaving the mountains, lake and cranes uncovered in the middle band. Do not flatten it into an even scrim; that kills the artwork.
+.footer-crisis is its own paper card: padding 1rem 1.25rem, border-radius 14px, border-left 3px solid var(--alert), background rgba(233,227,215,.94), backdrop-filter blur(6px). Safety copy must never sit unbacked on the artwork.
+
+## 11. Motion
+Keyframes: in-up (opacity 0 / translate3d(0,18px,0) -> 0), in-fade, in-bg (opacity 0 + scale(1.06) -> 1), rise-in (14px), fade-in, draw-dial (stroke-dashoffset 302 -> 0), qa-open.
+.hero__bg gets in-bg 1.4s var(--ease) both; .hero__scrim gets in-fade 1s ease both .08s.
+This exact group gets animation:in-up .78s var(--ease) both — .topbar .brand, .topbar .menu, .topbar .connect, .stage .dial, .stage .headline, .stage .hero__sub, .stage .cta-row, .cards .card, .side .status-chip, .side .arrow-fab.
+Delays: brand .06s, menu .13s, connect .2s, dial .18s, headline .28s, hero__sub .36s, cta-row .46s, cards .44/.53/.62s, status-chip .3s, arrow-fab .72s. .dial__arc runs draw-dial 1.9s var(--ease) both .5s.
+Footer items run rise-in .72s cubic-bezier(.22,1,.36,1) both with a --col-stagger token per column (.16s/.24s/.32s) and .08s steps down each link list.
+JS adds .anim-done on animationend so a load animation can never re-fire or fight a later transition.
+
+## 12. JavaScript — seven small IIFEs, no libraries
+1. Entry-animation cleanup: add .anim-done on animationend, guarding e.target === el.
+2. Nav controller: one setOpen(open) that early-returns if unchanged, toggles .is-open / .is-active, sets aria-expanded and swaps aria-label between "Close menu" and "Open menu", toggles .nav-lock on BOTH documentElement and body, focuses the first link after 360ms with preventScroll, and returns focus to the hamburger on close. Escape closes; Tab is trapped by cycling first/last of a[href],button.
+3. Scroll reveal: one IntersectionObserver, rootMargin '0px 0px -12% 0px', threshold .15, watching .reveal,.step,.tstep,.hour; adds .is-in and unobserves. Under prefers-reduced-motion it adds .is-in to everything immediately and writes the final counter values.
+4. Timeline rail: on a passive scroll listener behind requestAnimationFrame, set .timeline__prog height to clamp((innerHeight*0.62 - railTop) / railHeight, 0, 1).
+5. Background video gating: an IntersectionObserver plays the integrative video only while it is on screen and pauses it otherwise, flipping preload to auto on first intersection.
+6. Payer marquee: clone every item once with aria-hidden="true" and blank alt, then start the marquee animation from JS so a no-JS or reduced-motion visitor sees one static set instead of a half-empty strip.
+7. Forms: preventDefault, honeypot check, then validate [required] — checkbox by checked, everything else by trimmed value plus checkValidity. Mark failures with a var(--alert) border, focus the first one, and on success hide the form and reveal a role="status" confirmation.
+
+## 13. Responsive — in this order
+@media (max-width:1100px): hero collapses to one column; .side becomes absolute inset with pointer-events:none and only .side__top interactive; .arrow-fab hides; .panel gains padding-top clamp(62px,9vw,88px); steps/services/pillars/facets/research go 2-up; conditions 2-up; hour/qs/prov/cover/fac/req/fees go single column; .prov__media stops being sticky; footer grid becomes 1fr 1fr 1fr with brand and newsletter spanning 1/-1; .footer-media::after adds a top seam gradient.
+@media (min-width:721px) and (max-width:1100px) AND @media (max-width:720px): the footer video stops being an absolute background and becomes a real flow item AFTER the copy — .site-footer height auto, side and bottom padding 0; .footer-media position:relative, order 1, margin-top auto; .footer-bg position:relative, height auto, object-fit contain. The 16:9 clip must NEVER use cover on a portrait viewport; it zooms about 2.5x and drags the cranes up through the link columns.
+@media (max-width:820px): hero height auto with min-height 100svh; .hero__inner min-height calc(100svh - 24px) so the panel still fills the screen; cards become repeat(auto-fit,minmax(190px,1fr)); .how loses its negative margin and radius; form fields go single column; nav sheet goes full width.
+@media (max-width:720px): everything single column; touch ergonomics — .link-list gap .2rem with .55rem link padding, .socials svg 28px, .subscribe input font-size 16px to stop iOS focus zoom.
+@media (max-width:440px): --fs-nav .92rem; .cta-row buttons go full width.
+@media (max-width:359px): footer grid single column.
+@media (max-height:540px) and (orientation:landscape): shrink the dial to 70px and the headline to clamp(1.6rem,5.4vw,2.3rem).
+@media (hover:none): kill hover transforms, keep nav arrows visible, 40px minimum tap targets.
+@media (prefers-reduced-motion:reduce): kill every entry animation and transition; .reveal opacity 1 and transform none; dial arc at dashoffset 0; the two hour rings at their end values; marquee and pulse off; nav sheet degrades to a plain opacity fade with zeroed delays; both background videos display:none and .site-footer falls back to the poster as a background-image.
+
+## 14. Copy — verbatim
+Practice: Juniper Path. Provider: Dr. Elena Marsh, DNP, PMHNP-BC — "Psychiatric Mental Health Nurse Practitioner and founder of Juniper Path."
+Pull quote: "I start with the smallest change likely to help and build from there. Medication is a tool, not an identity. My job is to make sure you understand your options well enough to choose."
+Conditions: Anxiety, Depression, ADHD, Bipolar disorder and mood swings, PTSD and trauma, OCD, Insomnia, Substance use.
+Pricing: psychiatric evaluation 60 minutes 220 dollars; follow-up 30 minutes 120 dollars.
+Contact: (480) 555-0168, hello@juniperpathpsychiatry.com, Juniper Path Psychiatry PLLC, telehealth across Arizona, Phoenix AZ.
+Crisis line, in the footer and the FAQ: call or text 988, call 911, or go to the nearest emergency room; Arizona crisis line 1-844-534-4673.
+All contact details are placeholders. The insurance marquee ships with real payer names; replace them with invented ones before deploying anything public, or you are claiming network participation that does not exist.
+
+## 15. Acceptance checklist
+- Desktop 1101px and up: exactly two hero columns, white panel left at 1.04fr, video visible right at .7fr, and the hero is exactly one viewport tall with no page scrollbar at the top.
+- ZERO horizontal overflow at 320, 360, 375, 414, 480, 600, 768, 820, 1100 and 1440px. Assert document.documentElement.scrollWidth === window.innerWidth; only the masked .payers track may exceed it.
+- Both videos autoplay muted, loop and play inline on iOS, with the poster showing before first frame.
+- The hour dial arc draws once on load and the two comparison rings animate to 25 percent and 100 percent when scrolled into view.
+- The timeline rail fills in step with scroll and each dot lights as its step enters.
+- FAQ opens and closes with no JavaScript at all and is operable from the keyboard.
+- Nav: hamburger morphs to an X, links stagger in, the sticky header with the close button stays visible, Escape / scrim / X / any link closes it, and the background cannot scroll while open.
+- Footer copy and the crisis card stay legible over the artwork on desktop, while the mountains, lake and cranes remain unwashed in the middle band.
+- prefers-reduced-motion removes all motion and both videos, falling back to the poster still.
+
+## 16. Scars — things that cost real time here
+- A bare .brand{display:flex} written for the topbar silently destroyed the footer brand column. Scope it as .topbar .brand.
+- overflow-x:hidden on body makes body a scroll container; use overflow-x:clip on html and body.
+- Verifying in a hidden browser pane or a zero-width emulated viewport returns garbage. Assert window.innerWidth before trusting any measurement, and cache-bust the URL, because a stale cached stylesheet will make a correct fix look broken.
+- Headless Chrome will not advance a <video> while you screenshot it. To capture this page frame by frame, extract the clip with ffmpeg, swap each <video> for an <img> with the same classes, and set img.src per frame with await img.decode() before each shot.

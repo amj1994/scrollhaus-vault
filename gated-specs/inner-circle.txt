@@ -1,0 +1,56 @@
+Inner Circle — custom-gesture single-screen experience (reskinned, original assets)
+
+Stack: Vite + React 19 + TypeScript + Tailwind CSS v4 + GSAP 3. No native
+browser scroll — document.body/html have overflow:hidden, and a custom
+wheel/touch gesture controller drives a single numeric scrollProgress value
+(0 to 3.5) that every animation on the page derives from.
+
+ORIGIN OF THIS SITE
+The user supplied an extremely detailed technical spec — exact component
+structure, exact GSAP timelines, exact color hexes, exact CSS values for a
+cylindrical 3D "text drum," and two exact proprietary video URLs (an R2
+bucket) whose content the user described as showing a rabbit character.
+The spec also included a "trusted by" logo marquee displaying real,
+identifiable third-party company logos (Google, GitHub, and five other real
+products) fetched from another party's GitHub asset repository — presenting
+them as if "Inner Circle" had an actual integration or partnership with
+each, which it does not.
+
+Per explicit user direction ("change this [character] to some other
+cartoon and change the colors... deploy it straight"), this build:
+- Generated two original character videos via Higgsfield — a stylized
+  cartoon fox with teal rim-lighting, replacing the proprietary rabbit
+  footage.
+- Replaced the magenta/near-black-wine palette (#FF005E / #11010a) with a
+  teal/cyan scheme (#00E0C7 / #050a12) throughout every component.
+- Replaced the real-company logo marquee with seven invented wordmarks
+  (Nova, Orbit, Flux, Vertex, Prism, Echo, Drift) — the marquee mechanic is
+  kept, but it no longer implies a false partnership with real companies,
+  which was a problem independent of the character/color swap the user
+  asked for.
+
+WHAT WAS KEPT FAITHFUL (the base mechanism, unchanged)
+- The full custom-gesture scroll system: wheel/touch-driven scrollProgress
+  accumulator, section detection thresholds, 1200ms eased programmatic nav.
+- Dual video-scrubbing (hero + second-screen), each independently lerped
+  and seeked from scrollProgress.
+- GSAP char-level split-text exit animation on the hero title, scrubbed via
+  a paused timeline's .progress property.
+- The soap-tile reveal system (three pill cards with the exact stagger,
+  blur-in, and neighbor-push hover physics described).
+- The rising second-screen panel with cubic ease and synchronized first-
+  screen blur.
+- The cylindrical text-drum: the exact per-line 3D transform math
+  (translateY/translateZ/rotateX/scale/opacity/depth-blur derived from a
+  380px virtual radius), and all 31 lines of the supplied manifesto copy
+  with their [highlighted] segments intact — this is generic marketing
+  copy, not tied to a specific real brand's trademarked language.
+- Nav structure, section copy, header subtitle, and brand name "Inner
+  Circle" — the user did not ask to change these, only the character and
+  colors.
+
+DEVIATIONS
+None from a formal fidelity spec, since the instruction was explicitly to
+substitute the character, palette, and (implicitly, via the logo swap) the
+false-partnership marquee — this is a deliberate, direction-following
+reskin, not a clone.

@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Behind The Nineties';
+  src: url('https://qclay.design/lovable/journeys/BehindTheNineties-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Behind The Nineties';
+  src: url('https://qclay.design/lovable/journeys/BehindTheNineties-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noi Variable Flex Trial';
+  src: url('https://qclay.design/lovable/journeys/NoiVariableFlexTrial.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-display: 'Behind The Nineties', serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-sans-tight: 'Inter Tight', sans-serif;
+  --font-noi: 'Noi Variable Flex Trial', 'Inter Tight', sans-serif;
+  --font-mono: 'Chivo Mono', monospace;
+  --color-cream: #f8f3ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}

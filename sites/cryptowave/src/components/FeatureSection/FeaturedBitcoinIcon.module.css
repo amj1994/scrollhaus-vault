@@ -1,0 +1,11 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1vw;
+  margin-top: 1vh;
+  border-radius: 50%;
+}
+
+.glyph {
+  color: #fff;
+}

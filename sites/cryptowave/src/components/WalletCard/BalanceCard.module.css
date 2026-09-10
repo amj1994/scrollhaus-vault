@@ -1,0 +1,141 @@
+.root {
+  position: relative;
+  z-index: 2;
+  width: clamp(200px, 100%, 313px);
+  margin-inline: auto;
+  padding: clamp(20px, 2.2vw, 28px) clamp(18px, 2vw, 24px) clamp(28px, 3vw, 36px);
+  background: var(--gradient-surface-2);
+  border-radius: clamp(22px, 2.28vw, 32.79px);
+  backdrop-filter: blur(26.83px);
+}
+
+/* Clips the ellipse glow to the card's rounded shape. Kept as a separate
+   layer (rather than `overflow: hidden` on .root) so OverlapBadges can
+   still straddle the card's bottom edge by design. */
+.glowMask {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.topRow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance {
+  font-family: var(--font-display) !important;
+  font-size: var(--fs-balance);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 0.85em;
+  margin-left: 3px;
+  background: var(--color-gold);
+  vertical-align: -0.1em;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    animation: none;
+  }
+}
+
+.sparkleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--action-btn-size, clamp(32px, 3vw, 38px));
+  height: var(--action-btn-size, clamp(32px, 3vw, 38px));
+  flex-shrink: 0;
+  border-radius: var(--radius-chip);
+  transition: transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.sparkleBtn svg {
+  width: var(--action-btn-size, clamp(32px, 3vw, 38px));
+  height: var(--action-btn-size, clamp(32px, 3vw, 38px));
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.sparkleBtn:hover {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sparkleBtn:hover {
+    transform: scale(1.05);
+  }
+}
+
+.addressField {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: clamp(14px, 1.6vw, 20px);
+  padding: 12px 14px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.addressLabel {
+  font-size: var(--fs-caption);
+  color: var(--color-text-tertiary);
+}
+
+.addressValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list {
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(8px, 1.2vw, 14px);
+  max-height: clamp(240px, 27vw, 290px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 84%, transparent 100%);
+}
+
+.cornerButton {
+  position: absolute;
+  right: var(--corner-btn-inset, clamp(12px, 1.4vw, 20px));
+  bottom: var(--corner-btn-inset, clamp(12px, 1.4vw, 20px));
+  z-index: 5;
+}

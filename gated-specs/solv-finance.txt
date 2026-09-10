@@ -1,0 +1,176 @@
+Build a single-page site called **SOLV** — a dark-olive/lime fintech landing page for a
+business-funding brand ("Build for fast moving business"). Recreate it EXACTLY as
+specified: stack, file layout, colors, spacing, copy, and animation timing are all
+intentional. Do not substitute, paraphrase, or "improve" anything.
+
+## 1. Stack & project setup
+- TanStack Start v1 (`@tanstack/react-start` + `@tanstack/react-router`) + React 19 +
+  Vite (via `@lovable.dev/vite-tanstack-config`, which bundles the TanStack Start plugin,
+  Tailwind v4, tsconfig-paths, and a Cloudflare-target Nitro build — do not hand-configure
+  any of that) + Tailwind v4 (used only for the shadcn/ui component layer in
+  `src/styles.css`; the actual page is hand-written CSS in `src/global.css`, ~3000 lines)
+  + GSAP 3 + ScrollTrigger + Lenis smooth scroll.
+- `vite.config.ts` wraps `@lovable.dev/vite-tanstack-config`'s `defineConfig`, pointing
+  the TanStack Start server entry at `src/server.ts`.
+- `src/router.tsx` creates the router from a generated `routeTree.gen.ts` (auto-produced
+  by the TanStack Router Vite plugin — do not hand-write it) with `scrollRestoration: true`
+  and `defaultPreloadStaleTime: 0`.
+- `src/server.ts` / `src/start.ts` wrap the TanStack Start server entry with an error
+  middleware that renders a plain-text error page on any 500, instead of letting h3
+  swallow it into an opaque JSON body.
+- Single route: `src/routes/index.tsx` renders one component, `<Closing />` — which
+  itself composes every section in order (see below) plus the footer, so the whole page
+  is effectively one route tree.
+
+## 2. Page order (all in one scrolling document)
+Nav → Hero (with floating Cashflow card) → Promo (partner logo marquee + two feature
+cards) → Capital (spend chart card + photo card) → Fee (pricing/fee explainer) →
+Testimonial (full-bleed quote carousel) → FAQ → Articles (3-card grid) → Closing (CTA +
+expert avatars) → Footer.
+
+## 3. Design tokens (src/global.css `:root`)
+```
+--bg-warm:  #3a2b18   --lime:      #e1f560   --olive: #2e3502
+--bg-deep:  #0e0d0c   --lime-mid:  #b8cc38   --white: #ffffff
+--ink:      #14150e   --lime-soft: #cbe066
+--text-dim:   rgba(255,255,255,0.66)   --glass-bg:  rgba(255,255,255,0.055)
+--text-faint: rgba(255,255,255,0.45)   --glass-brd: rgba(255,255,255,0.11)
+--ease-out: cubic-bezier(0.16, 1, 0.3, 1)     --container: 1240px
+```
+Body font is Inter (system fallback stack), background `--bg-deep`, base text white.
+Custom scrollbar: 11px, lime thumb on a transparent track (`scrollbar-color`, plus
+`::-webkit-scrollbar-thumb` for Chromium). `::selection` is lime-on-olive. Focus rings
+are a 2px lime outline, 3px offset, rounded to match the target's own border-radius
+(pill-shaped for `.cta`/`.nav__signup`/`.nav__menu-btn`).
+
+## 4. Hero section
+- `.hero`: `min-height: 100vh`, background is a double radial-gradient over
+  `#1a1712` (warm glow top-left, softer warm glow bottom-right).
+- `.hero__media` — full-bleed background video, `position:absolute; inset:0`, the
+  `<video>` itself `object-fit:cover; object-position:58% 20%`. **This is a real
+  autoplaying, looping, muted video, not a static photo** — a person in a burnt-orange
+  sweater in a warm-lit interior, subtle continuous push-in with a slight hand/breathing
+  motion, ~4 seconds, seamless loop (`autoPlay loop muted playsInline`, with a poster
+  frame for the first paint). Two soft radial/linear scrims sit above it
+  (`.hero__media::before` a warm diagonal gradient darkening the left ~60% so the white
+  headline stays legible; `.hero__media::after` gentle top/bottom edge fades) plus an SVG
+  fractal-noise `.noise` layer at 5% opacity, `mix-blend-mode:overlay`, and a
+  `.hero__scrim` frosted-blur band pinned to the bottom edge.
+- Nav (`.nav-wrap`, opacity:0 until intro plays): 3-column grid — pill-shaped glass
+  nav-links group on the left (`background: rgba(0,0,0,.27); backdrop-filter: blur(18px)`,
+  56px tall, fully-rounded), centered wordmark `Solv.` (the "o" italicized/emphasized via
+  the mark styling), right-side pill group with Login + white Sign-up pill + a separate
+  56×56 circular hamburger button (same glass treatment). Below 900px the link/action
+  pills hide entirely and a `.mobile-panel` dropdown (opacity/translateY transition) takes
+  over, triggered by the hamburger.
+- Hero copy (`.hero__inner`, bottom-aligned, max-width 720px): H1 `Build for fast<br/>
+  moving business` (`font-size: clamp(2.6rem,5.2vw,5.8rem)`, weight 410, line-height
+  0.926, letter-spacing -3.835px — an unusually tight tracking value, keep it exact),
+  description `AI-first ERP powering next-gen finance & accounting. General ledger,
+  revenue automation, close management.`, and a single lime pill CTA `Get started` with a
+  trailing arrow icon.
+- CTA arrow behavior: the arrow is visible by default (`opacity:1`); on hover it runs a
+  keyframe animation `arrow-reappear-left` that slides the icon out to the right and
+  re-enters from the left — not a simple translate, an actual exit/re-entry loop.
+- Cashflow card (`CashflowCard.tsx`, `.card`): floats `position:absolute; right:48px;
+  bottom:clamp(50px,11vh,120px)`, white background, ~305–385px square, rounded 22px, deep
+  drop shadow. Header row: title `Cashflow` + a lime `+23%` badge + a `⋮` dots button.
+  Tab row (`Weekly`/`Monthly`/`Yearly`) with an animated underline (`.tabs__line`)
+  sliding between tabs. Below the tabs, a bar-style cashflow chart
+  (`.chart .cf-col`/`.cf-seg`, olive/lime segmented columns) that animates its segment
+  heights in on reveal (`top`/`height` transition, 0.5s `--ease-out`). Footer caption `It
+  updates on each reopen`. A vertical `.card-scroll` scrollbar-style decoration sits just
+  to the card's left, hidden below 900px.
+- Card entrance is gated behind the hero intro finishing (`useHeroIntro`'s
+  `onCardVisible` callback flips `cardActive`), not shown immediately on mount.
+
+## 5. Global scroll/reveal behavior
+- Lenis smooth scroll initializes in `src/lib/useSmoothScroll.ts`, mounted once from
+  `src/routes/__root.tsx`. `src/lib/gsap.ts` registers `ScrollTrigger` on GSAP exactly
+  once (module-level guard). `ScrollTrigger.refresh()` is called after Lenis mounts and
+  again on the window `load` event, so layout computed before web fonts/images finish
+  doesn't leave triggers mis-positioned.
+- Body-copy reveal pattern used throughout every section (`useXReveal.ts` hooks, one per
+  section: Articles/Capital/Closing/Faq/Fee/Promo/Testimonial): each element animates
+  `opacity:0, y:18px, blur(10px)` → `opacity:1, y:0, blur(0)` via its own **individual**
+  ScrollTrigger with `start:"top 52%"` and `once:true` — every card/line gets its own
+  trigger so a multi-item section reveals item-by-item as the user's eye actually reaches
+  each one, never all at once when the section top merely touches the viewport.
+- `@media (prefers-reduced-motion: reduce)` collapses all animation/transition durations
+  to effectively zero (`0.001ms`) site-wide.
+- Hero title intro (`useHeroIntro.ts` + `SplitText.tsx`) splits the H1 into per-word spans
+  and stagger-fades them in on mount, independent of scroll.
+- Partner-logo marquee (`useMarquee.ts` + `LogoMarquee.tsx`): a duplicated flex track
+  animated with a linear, infinite GSAP tween (`marquee` keyframe / CSS var-driven
+  `--marquee-dur`/`--marquee-shift`), so the loop is seamless. Disabled under
+  reduced-motion.
+
+## 6. Promo section
+White background, `color:#2e3502`. Centered pill badge, then the logo marquee (edge-fade
+masks left/right via `.logos-fade`), then a two-column grid (`0.86fr` / `1.14fr`):
+left column headline + copy + `Start banking` (dark pill) / `Learn more` (outline pill)
+buttons and two feature call-out blocks (`.callout` — "Control spend effortlessly" style,
+light-blue card with bullet list + `Manage expenses` button); right column is a dark
+card (`.card-dark`) holding two mini-cards side by side: **Send money** (small circular
+team-avatar row) and **Exchange money** (stacked country-flag row), plus a bottom line
+`Fuel your growth with friendly Venture Debt`.
+
+## 7. Capital section
+A dark card grid including: a spend-breakdown card with a legend (`Spent 22%` /
+`Available 63%` / `Unallocated 17%`, each with its own colored dot) and a segmented
+horizontal bar (`.segbar`); and `.cap-card--photo` — a full-bleed photo card (person using
+a phone) with a top-to-bottom darkening gradient (`rgba(20,18,15,.42)` top fading to clear,
+`rgba(20,18,15,.55)` at the bottom) so white text sits legibly over it: title `Hassle-
+free cap` (56px, weight 500, letter-spacing -3.835px) + body `Get capital in as little as
+24 hours. so you can capitalize on growth opportunities`.
+
+## 8. Testimonial section
+Full-bleed section, `min-height:975px`, lime (`#e1f560`) text color throughout, bottom-
+aligned content. Background is a full-bleed portrait photo (object-position `50% 38%`,
+upper-middle framing) with a bottom-weighted darkening gradient plus a separate blurred
+glow overlay behind the quote text. Carousel of testimonial quotes with prev/next arrow
+buttons (one has a circular progress ring `.quote__arrow-ring`); current quote fades
+between slides (200ms opacity swap). Sample quote is attributed to a fictional "Sarah
+Mitchell, Co-founder at BrightThreads" — keep the by-line format (name, title @ company)
+but the exact names/quotes live in `src/data.ts`, copy them verbatim from there.
+
+## 9. Articles section
+White-on-dark 3-up grid, each `.art-card` a 1:1 square with the article photo as a full-
+bleed `object-fit:cover` background, a bottom-weighted dark gradient, a warm glare overlay
+(`mix-blend-mode:screen`, two radial gradients), and the headline pinned to the bottom
+(`padding:20px`, up to 38px, tracking -1.835px). Hovering scales the image to 1.05 over
+0.6s. Article images are original photography — a business owner reviewing financial
+documents, a stockroom during a busy season, and a storefront mid-expansion — matched to
+each headline's topic (headlines come from `src/data.ts`, copy verbatim).
+
+## 10. Closing + Footer
+Light lime-tinted gradient background (`#fff` → `#e6f2a8`). Large CTA heading `Speak to
+our financing experts` + body copy + a row containing: an "Experts" label with 3
+overlapping circular avatar photos and a `3+` badge, a vertical separator, and a
+`Talk to finance` pill button. Footer sits directly below inside the same section:
+address `10013, New York, 350 Broadway, Suite 402` and copyright line
+`© 2026 — Copyright All Rights reserved` (note: `margin:-12px` on the copyright text,
+sitting in the same `.footer__bottom` row as the address — reproduce that exact quirk,
+not a cleaned-up version of it).
+
+## 11. Responsive behavior
+- Below 900px: nav link/action pill groups hide, replaced by the mobile hamburger panel;
+  hero content top-aligns instead of bottom-aligns with extra bottom padding to clear the
+  now-stacked Cashflow card (which goes full-width, `left`/`right` inset instead of a
+  fixed square); the vertical card-scroll decoration hides.
+- 901–1335px band: several components get explicit shrink rules (spend card goes
+  min-height-driven, capital photo card padding/gap tighten, testimonial quote text drops
+  to 40px, etc.) — treat this as its own breakpoint, not an interpolation between the
+  900px and 1440px rules.
+- At and below 1335px width, both the "no spend restrictions" pill list and the partner-
+  logo marquee hide every other item (`:nth-child(even)`) in both the visible set and its
+  aria-hidden marquee-loop duplicate, so the row doesn't crowd once the container has
+  already narrowed — sizes/gaps on the remaining items are untouched.
+- ≤1440px: FAQ question/answer font sizes step down explicitly (25px / 18px).
+- ≤560px: hero bottom padding increases further and the H1 drops to a fixed 2.35rem.
+
+## 12. Assets
+All imagery is original — a full hero video (autoplaying/looping, built from two
+generated reference frames) plus stills for the testimonial portrait, the capital-section
+photo, three expert headshots, and three article thumbnails. None of it is hotlinked from
+a third party.

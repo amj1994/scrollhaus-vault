@@ -1,0 +1,131 @@
+.root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(18px, 2vw, 24px);
+  background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.02) 0%,
+          rgba(255, 255, 255, 0.02) 100%
+  ),
+  #030304;
+  border: 1px solid var(--color-border-panel);
+  border-radius: clamp(18px, 1.8vw, 26px);
+  box-shadow: 0 26px 25px 0 rgba(230, 221, 254, 0.07) inset;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.heading {
+  font-family: Helvetica, var(--font-sans, sans-serif);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+  letter-spacing: -0.84px;
+  color: var(--color-text-primary);
+}
+
+.cursorBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  background: none;
+  border: none;
+}
+
+.iconGrid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 16px);
+  margin-top: clamp(16px, 2.4vw, 28px);
+}
+
+.iconRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.1vw, 14px);
+}
+
+.iconRowBottom {
+  gap: clamp(10px, 1.3vw, 16px);
+}
+
+.iconWrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.iconWrap img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: block;
+}
+
+.iconWrapSm {
+  width: 21.464px;
+  height: 21.464px;
+}
+
+.iconWrapMd {
+  width: 33.595px;
+  height: 33.595px;
+}
+
+.iconWrapLg {
+  width: 62.524px;
+  height: 62.524px;
+}
+
+.iconWrapBottomMid {
+  width: 54.126px;
+  height: 54.126px;
+}
+
+.iconWrapBottomOuter {
+  width: 44.794px;
+  height: 44.794px;
+}
+
+/* Icons roughly double in size on large monitors only - everything below
+   1920px keeps the sizes above untouched. */
+@media (min-width: 1920px) {
+  .iconWrapSm {
+    width: 32.928px;
+    height: 32.928px;
+  }
+
+  .iconWrapMd {
+    width: 57.19px;
+    height: 57.19px;
+  }
+
+  .iconWrapLg {
+    width: 105.048px;
+    height: 105.048px;
+  }
+
+  .iconWrapBottomMid {
+    width: 71.252px;
+    height: 71.252px;
+  }
+
+  .iconWrapBottomOuter {
+    width: 59.588px;
+    height: 59.588px;
+  }
+}

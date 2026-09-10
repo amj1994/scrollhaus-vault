@@ -1,0 +1,228 @@
+Build a single-page website called **TENTH HEATING & AIR** — a warm, literary emergency-
+HVAC landing page told as a 145-frame scroll-scrubbed image sequence with GSAP
+ScrollTrigger choreography. Recreate it EXACTLY as specified below: every color token,
+class, easing curve, animation timing, and line of copy is intentional. Do not substitute,
+paraphrase, or "improve" anything.
+
+## 1. Stack & project setup
+- Plain static HTML/CSS/JS. No build step, no bundler, no framework.
+- One file: `index.html`. Must be served over HTTP (not opened via `file://`) because the
+  frame sequence is loaded with `new Image()` from a relative `frames/` folder.
+- One external dependency, both loaded from CDN in `<head>`:
+  `https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js`
+  `https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js`
+- Fonts via Google Fonts `<link>`: Fraunces (opsz,wght axis: 9..144,300 / 9..144,500 /
+  9..144,700 — display serif, used bold for the H1 and medium for section H2s), Public
+  Sans (400/500/600, body), JetBrains Mono (400/500, all-caps labels and numeric readouts).
+- `<title>The Third Time...` — no: title is `Tenth Name — Emergency Heat, Seven Days`
+  (the literal title tag shipped in the source repo — reproduce it exactly, even though
+  "Tenth Name" reads as an unfilled placeholder next to the polished brand mark "Tenth."
+  used everywhere else on the page). `<link rel="icon" href="data:,">` (empty favicon,
+  intentional).
+
+## 2. Asset pipeline — the 145-frame sequence
+- `frames/f_001.jpg` … `frames/f_145.jpg` (3-digit zero-padded index, `TOTAL = 145`,
+  `PAD = 3`). Real photographic frames of a single continuous take/camera move — a
+  pre-dawn HVAC emergency call at an elderly woman's house, resolving into a warm family
+  breakfast scene by the final beats. Scrubbing through the sequence must read as one
+  unbroken shot advancing forward, never a jump-cut or reversal.
+- All 145 images preload with `new Image()` on page load, `decoding="async"`. A loader
+  screen ("Reading service record" + a thin progress bar + percentage) tracks
+  `loaded / TOTAL`, revealing the page once every frame has loaded (`onload`/`onerror`
+  both count so one broken frame can't hang the loader). A 9-second hard timeout
+  force-starts the page even if some frames never resolve.
+- An optional `ASSET_BASE` global (empty string by default) can prefix every frame URL to
+  serve frames from a CDN/origin in production instead of the bundled `frames/` folder —
+  leave it unset to use the bundled frames.
+
+## 3. Page structure (all inside `<body>`)
+1. `#loader` — fixed fullscreen overlay, `z-index: 60`, centered grid, "Reading service
+   record" label + progress bar + percentage. Hidden once all frames load.
+2. `<header>` — fixed top, `z-index: 30`, flex `justify-content: space-between`. Left:
+   wordmark `Tenth<span>.</span>` (Fraunces 700, the trailing period in the copper accent
+   color). Center: `.readout` showing `Thermostat` label + a live temperature readout
+   (`#thermo`, starts at `41°F`) — hidden below 820px. Right: a pill button
+   `(800) 555-0142` linking `tel:+18005550142`, 1px hairline border that turns
+   copper-colored on hover. A soft top-down gradient scrim sits behind the header.
+3. `.rail` — fixed vertical nav pinned to the right edge, vertically centered,
+   `z-index: 20`, hidden below 820px. A vertical "Thermostat" label plus four clickable
+   ticks reading `41°`, `47°`, `58°`, `68°` (each a tiny horizontal line + label). Clicking
+   a tick smooth-scrolls to that fraction of the film (`data-to="0.02"`, `0.30`, `0.58`,
+   `0.88`). The tick matching the current scroll band gets `data-on="1"`: its line widens
+   from 14px to 26px and its color shifts from muted to copper. Band matching is
+   range-based against the next tick's threshold (`p >= at - 0.02 && p < next - 0.02`), not
+   a fixed set of cutoffs — reproduce that exact comparison, not hardcoded bands.
+4. `<main>` → `.film` section — `position: relative`, JS-set height `520vh` (auto under
+   reduced motion). Inside:
+   - `.stage` — `position: sticky; top: 0; height: 100svh; overflow: hidden` — the pinned
+     viewport. Contains `<canvas id="seq">` (manual letterbox/cover-fit painter) and a
+     `.vignette` overlay (top/bottom darkening gradient + a right-edge darkening gradient).
+     Unlike the "Third Time" sibling template, this page has **no film-grain overlay** and
+     **no canvas push/zoom** — the canvas transform stays static throughout the scrub.
+   - `.beats` — `margin-top: -100svh`, sits over the sticky stage and scrolls normally.
+     Five full-height sections in order:
+     a. `.hero` (bottom-aligned) — H1 `Someone has kept this house warm since 1987.` +
+        subhead + a `.scroll-cue` reading `Scroll to follow the call` with an animated
+        drawing underline (`@keyframes draw`, 2.4s infinite scaleX pulse).
+     b. Beat `41°F · 04:12` — H2 `The thermostat had stopped answering.` + body.
+     c. Beat `47°F · 04:51` — H2 `The panel tells the truth if you ask in order.` + body.
+     d. Beat `58°F · 06:20` — H2 `Heat does not arrive all at once.` + body.
+     e. Beat `68°F · 07:40` — H2 `By breakfast she had her kitchen back.` + body.
+     Every heading/paragraph carries `data-split` and is chopped at build time into one
+     `<span class="w">` per word (regex-based, preserves inline tags) — words are the
+     animation unit.
+   - Each hero/beat block sits inside a `.panel`: translucent dark card
+     (`oklch(0.12 0.02 198 / .38)` background, 1px `oklch(1 0 0 / .085)` border, 2.5px
+     backdrop blur). Same rule as the sibling template: **no full-bleed gradient scrim
+     behind the copy** — text always sits inside this tight bounded panel.
+5. `.record` section (below the film) — two-column grid. Left: heading `Every furnace
+   keeps a record of who showed up.` + paragraph. Right: `.tag` — a slightly rotated
+   (-1.1deg) cream service tag styled like a physical paper tag wired to an appliance,
+   with a punch-hole notch (`.tag::before`), header `Service Record — Unit 4412-G`, then
+   an ordered list of ten technician visits spanning 1987–2026 (month/year + technician
+   initials, see §5 for exact rows), the final row (`02 · 2026`, `— us`) styled in a warm
+   accent color via `[data-now]`. Footer caption: `Keep this tag with the unit`.
+6. `.close` section — two-column grid. Left: heading `We answer at four in the morning.` +
+   paragraph + a large tap-to-call link `(800) 555-0142` with caption `Seven days`. Right:
+   a `<dl>` of four facts (`Response`, `Technicians`, `Quotes`, `Service area` — exact copy
+   in §5), each with a hairline top border.
+7. `<footer>` — hairline top border, small caps two-line row:
+   `Tenth Heating & Air · Lic. #HV-441290` / `Emergency heat, seven days`.
+
+## 4. Color system (CSS custom properties, oklch)
+```
+--cold:       oklch(0.205 0.032 192)  /* opening palette: oxidized copper / verdigris */
+--warm:       oklch(0.245 0.048 52)   /* closing palette: raw copper */
+--ink:        oklch(0.945 0.012 82)   /* primary text */
+--muted:      oklch(0.735 0.021 192)  /* secondary/label text */
+--copper:     oklch(0.735 0.132 56)   /* accent — active states, links, brand period */
+--copper-dim: oklch(0.52 0.085 56)    /* declared but only used sparingly, keep the token */
+--tag:        oklch(0.885 0.028 88)   /* the service-tag background */
+--tag-ink:    oklch(0.30 0.035 60)    /* text on the tag */
+--hair:       oklch(1 0 0 / 0.13)     /* hairline borders */
+```
+Body background is `--cold`. A fixed full-viewport pseudo-element (`body::before`) holds
+`--warm` at `opacity: var(--heat)`, and `--heat` is driven live by scroll progress
+(0 → 1 across the whole film) — the entire page's background temperature crossfades from
+cold oxidized-copper/verdigris to warm raw-copper as the user scrolls through the call,
+independent of whatever the current frame shows. This is the central visual mechanic and
+must not be skipped or approximated. The header thermometer readout is driven by the same
+progress value on a literal linear map: `41 + p * 27` (41°F at p=0, 68°F at p=1) — use
+that exact formula, not a different curve.
+
+## 5. Exact copy
+**Hero:** `Someone has kept this house warm since 1987.` / `Her furnace carries a paper
+tag with nine names on it. At 4:12 on the coldest morning of the year, we came to add the
+tenth.`
+
+**Beat 1 — `41°F · 04:12`:** `The thermostat had stopped answering.` / `Twenty-three
+degrees outside. A ninety-two-year-old woman, three blankets, and a house that had been
+quietly losing heat since midnight. She apologised for calling so early. They always do.`
+
+**Beat 2 — `47°F · 04:51`:** `The panel tells the truth if you ask in order.` /
+`Capacitor, flame sensor, pressure switch. Most failures announce themselves to anyone
+patient enough to read the sequence instead of guessing at it.`
+
+**Beat 3 — `58°F · 06:20`:** `Heat does not arrive all at once.` / `It moves through a
+house the way trust does — slowly, one room outward, the far corners last. You do not
+leave until the far corners are warm.`
+
+**Beat 4 — `68°F · 07:40`:** `By breakfast she had her kitchen back.` / `Then we showed
+her which panel to open, what the flashing light counts mean, and how to tell the
+difference between a furnace that is working hard and one that is in trouble.`
+
+**Record section:** `Every furnace keeps a record of who showed up.` / `It is a paper tag
+inside the door. No one designed it to be meaningful. Four decades later it is the only
+honest review a heating company ever gets.`
+
+Service-tag rows (month/year · technician initials), in order:
+`11 · 1987` R.M. — `02 · 1991` R.M. — `12 · 1996` D.A. — `01 · 2003` D.A. —
+`10 · 2008` J.P. — `03 · 2014` J.P. — `11 · 2019` S.O. — `09 · 2023` S.O. —
+`01 · 2025` T.R. — `02 · 2026` — us (this last row visually distinct, `[data-now]`).
+Footer caption: `Keep this tag with the unit`.
+
+**Close section:** `We answer at four in the morning.` / `No dispatch fee on no-heat calls
+between November and March. If we cannot restore heat the same day, we bring loaner units
+and we do not charge for them.` / phone `(800) 555-0142` with caption `Seven days`.
+
+Facts list: `Response` → Under three hours on no-heat, year round. / `Technicians` →
+NATE-certified, background-checked, paid hourly — never on commission. / `Quotes` →
+Written before work begins. The number does not move. / `Service area` → Within 40 miles
+of the county line.
+
+Footer: `Tenth Heating & Air · Lic. #HV-441290` / `Emergency heat, seven days`.
+
+## 6. Scroll mechanics — canvas frame scrub
+- `progress()` reads `.film`'s bounding rect: `span = height - innerHeight`,
+  `progress = clamp(-top / span, 0, 1)`.
+- GSAP ScrollTrigger drives a plain object `{ i: 0 }` from 0 to `TOTAL - 1` with
+  `ease: 'none'` and `scrub: 0.5` (`trigger: film, start: 'top top', end: 'bottom bottom'`),
+  calling `paint(f.i)` on every update. `scrub: 0.5` gives the frame advance a slight
+  trailing smoothness relative to raw scroll — do not use `scrub: true`/`0`.
+- `paint(idx)`: rounds and clamps the index, skips redraw if it's the same frame already
+  drawn, then manually letterboxes the image into the canvas (cover-fit math: compare
+  image aspect ratio to canvas aspect ratio, draw at whichever dimension overflows,
+  centered).
+- `readout(p)`: sets `--heat` (drives the cold→warm background crossfade) and updates the
+  header thermometer text and which rail tick is active, every frame, from scroll progress.
+- Canvas resizes to its container on `resize` (DPR capped at 2), and ScrollTrigger is
+  refreshed after.
+- A `?at=0.62`-style query param jumps the scroll position to that fraction of the film on
+  load (`window.filmScrub.jumpTo`), for deep-linking to a specific beat.
+
+## 7. Scroll mechanics — copy choreography
+For every hero/beat panel, a separate ScrollTrigger timeline (`trigger` = the parent
+section, `start: 'top bottom'`, `end: 'bottom top'`, `scrub: 0.7`) runs:
+1. Panel fades/rises in: `autoAlpha 0→1`, `y 26→0`, 0.55s, `power2.out`, at timeline start.
+2. The `.temp` label slides in from the left (`x -14→0`) slightly after (offset 0.10).
+3. Each word span rises in with a 0.045s stagger (`autoAlpha 0→1`, `y 20→0`, `power2.out`),
+   offset 0.15.
+4. A hold (`duration: 1.15`, no properties) so the fully-revealed state persists.
+5. Words drift out (`autoAlpha 1→0`, `y -14`, 0.02s stagger) followed almost immediately
+   by the whole panel fading/dropping out (`autoAlpha 1→0`, `y -22`).
+Below the film, `.rev`-tagged elements (record heading/paragraph, the service tag) reveal
+once on scroll-into-view (`start: 'top 86%'`/`'84%'`, `once: true`) with word-level or
+block-level `gsap.from` — never re-triggered on scroll back up. The tag itself animates in
+with a slight counter-rotation settle (`rotation: -2.6 → -1.1` implied by the base
+transform), its list rows sliding in from the left with a 0.075s stagger, and the facts
+list fading up with a 0.09s stagger.
+
+**Documented failure mode to avoid** (shared with the sibling barbershop template): if an
+element is skipped during a fast scroll rather than passing through every intermediate
+scrollTrigger update, its opacity/transform must still be explicitly written on the skip
+path — otherwise it freezes at its last computed value instead of reaching its target
+state.
+
+## 8. Accessibility — `prefers-reduced-motion: reduce`
+Hard requirement with a CSS `!important` backstop in addition to the JS branch:
+- CSS: all animations/transitions collapse to `0.01ms`, `.stage` becomes
+  `position: relative; height: 70svh` (unpins from sticky), `.film` height reverts to
+  `auto`, `.beats` loses its negative margin, beat sections get normal padding instead of
+  full-height flex centering, the scroll-cue underline animation stops, and every
+  word/reveal/tag-row/fact/panel/temp-label element is forced to
+  `opacity: 1 !important; transform: none !important; visibility: visible !important` —
+  everything visible, nothing animated.
+- JS: `layout()` sets the film height to `auto` (skipping the `520vh` scroll-driven track)
+  when `matchMedia('(prefers-reduced-motion: reduce)').matches`, and the GSAP `matchMedia`
+  reduced-motion branch simply paints frame 0 and calls `readout(0)` once instead of
+  building any ScrollTrigger timeline.
+
+## 9. Responsive
+- Below 820px: `.rail` and the header `.readout` (thermometer) are hidden entirely; panel
+  side margins collapse to `1.5rem`.
+- Below 460px: the service `.tag` gets tighter padding; each `.fact` row stacks its label
+  above its value instead of sitting side by side.
+- No horizontal scroll or overflow at any width — verify at 390px.
+
+## 10. Interaction details
+- The four rail ticks are real `<button>` elements with visible focus rings
+  (`:focus-visible` → 2px copper outline, 3px offset), not divs with click handlers.
+- `::selection` is styled copper-on-dark.
+- The header call pill and the close-section phone link both use real `tel:` hrefs —
+  functional tap-to-call links, not decorative.
+
+## 11. Licensing note (informational, not to be rendered on the page)
+This page shares its underlying scroll-scrub template with a sibling barbershop build.
+GSAP/ScrollTrigger is loaded from a CDN rather than vendored — confirm the current GSAP
+license covers redistribution inside a page you ship commercially before shipping this
+as-is in a paid product.

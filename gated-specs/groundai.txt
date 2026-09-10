@@ -1,0 +1,51 @@
+GROUNDAI — Redefine space with intelligent design
+Interior-design AI landing page with a full-bleed looping hero video, a brand
+marquee, and a 3-card feature row (an auto-advancing style carousel, a chat
+bubble that morphs from skeleton to a real message, and an adaptable-settings
+list). TanStack Start v1 + React 19 + Vite 8 + Tailwind v4 + framer-motion +
+lucide-react.
+
+STACK
+- framer-motion drives essentially every element on the page — staggered word-
+  by-word text reveals (a shared AnimatedWords helper reused six separate
+  times), spring-animated pill repositioning in the style carousel, a
+  backgroundColor tween for the chat bubble's skeleton-to-filled morph, and
+  viewport-triggered fades throughout.
+- No backend, no database, no auth, single `/` route.
+
+ASSETS — none swapped, all referenced live from the original CDN
+Per the source prompt's own architecture — a `src/lib/assets.ts` module
+exporting a single `A` object built from `BASE = "https://qclay.design/lovable/
+groundai"` plus per-file keys, with the instruction "reference every image/
+video through this A object only" — every asset (the hero video, the style-
+carousel background photo, two portrait photos, the wordmark, and six brand
+icons) is referenced by its live qclay.design URL rather than downloaded and
+self-hosted. This is a deliberate difference from most other builds in this
+batch: here the prompt's own code architecture specifies remote URLs baked
+into the object, not a local asset drop, so it was implemented exactly as
+written rather than mirrored to public/.
+Two asset-role decisions the prompt left implicit: the small avatar square in
+the hero footer and the chat card's "Me" avatar both use `A.womem`; the large
+testimonial portrait uses `A.bottomWonem` — the only two generic person photos
+in the manifest, assigned to the three unlabeled `<img>` slots the spec
+describes but doesn't name an asset for.
+
+NOTABLE IMPLEMENTATION DETAILS
+- The style carousel's active/inactive pill positions are computed from a
+  circular-distance formula each render (`diff` wraps around the 7-item list),
+  not a simple index compare — this is what makes items 2 slots away fade to
+  55% opacity and items 3+ away disappear, giving the "peeking neighbors" look
+  rather than a hard cut.
+- The chat card's second bubble (MorphBubble) is one element the whole time —
+  its background color tweens from a translucent skeleton fill to a solid
+  taupe 1.1s after mount, cross-fading its skeleton-bar content for a real
+  message via AnimatePresence, rather than two bubbles swapping visibility.
+- Card 2's avatar-stack (01/2/3 circles) uses solid background colors with a
+  matching border color to fake circular cutout overlap, not actual clip-path
+  masking.
+- Every "word-by-word" text reveal on the page (hero footer copy, the two
+  card-3/card-2 headlines, the testimonial quote) goes through one shared
+  AnimatedWords component parameterized by delay/step/duration rather than
+  being hand-rolled per section.
+
+Added 2026-09-10.

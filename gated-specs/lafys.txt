@@ -1,0 +1,2606 @@
+Use this prompt and build this exact website, without any questions. It is a single dark scroll-driven landing page for a brand called Lafys, with two live WebGL objects, a scroll-scrubbed video, a character-scramble glitch effect, a masked-reveal archive gallery and a full-screen menu.
+
+Reproduce it pixel perfect. Below you get, in order: the hosted asset files, the non-obvious requirements that will silently break the page if you ignore them, the full layer hierarchy, and then the complete working code (HTML, CSS and JavaScript). The code is authoritative. Where a behaviour is hard to state in words, the code already states it - copy it exactly rather than reimplementing it from the prose.
+
+Do not simplify any effect. Do not replace a multi-pass or physics-driven animation with an easing approximation. Do not drop the WebGL objects for static images. Do not substitute fonts.
+
+Output a single self-contained page. Keep the CDN imports exactly as written: GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js 0.160.0 via importmap, and Inter Tight from Google Fonts. There is exactly one scroll engine (Lenis) and one GSAP ticker driving it; never create a second Lenis instance.
+
+
+ASSET FILES
+
+All assets are already hosted. Use these absolute URLs verbatim. Do not rename, re-encode, or re-host them.
+
+  https://qclay.design/lovable/nothin/logo.glb
+  https://qclay.design/lovable/nothin/copyright.glb
+  https://qclay.design/lovable/nothin/env.webp
+  https://qclay.design/lovable/nothin/elevator.mp4
+  https://qclay.design/lovable/nothin/pic1.jpg
+  https://qclay.design/lovable/nothin/pic2.jpg
+  https://qclay.design/lovable/nothin/pic3.jpg
+  https://qclay.design/lovable/nothin/pic4.jpg
+  https://qclay.design/lovable/nothin/pic5.jpg
+  https://qclay.design/lovable/nothin/pic6.jpg
+
+logo.glb - the header monogram "LE". One material, Chrome_rough_optimised: metallicFactor 1.0, baseColorFactor 0.8/0.8/0.8, and a metallicRoughnessTexture EMBEDDED inside the glb. That embedded texture is what makes it read as polished chrome; roughnessFactor on its own is 1.0, which would render a dull matte metal. The model is authored UPSIDE DOWN - the code applies geo.rotateX(Math.PI) to stand it up. It is a single merged mesh with no named top/bottom halves, so the code cuts the geometry in half by triangle-centroid Y at load time; the two halves then spin at different lerp rates, which is the whole point of the effect. NOT Draco compressed.
+
+copyright.glb - the 3D copyright mark in the footer. Same Chrome_rough_optimised material with the same embedded roughness texture. NOT Draco compressed.
+
+Neither glb uses Draco. Do not wire up a DRACOLoader; it is dead weight.
+
+env.webp - 2048x1024 equirectangular environment map. Load it with THREE.TextureLoader, set mapping = THREE.EquirectangularReflectionMapping and colorSpace = THREE.SRGBColorSpace, run it through PMREMGenerator, and assign the result to scene.environment. This single texture drives the chrome reflections on BOTH models. It is the only standalone texture in the project; everything else is embedded or drawn in CSS.
+
+elevator.mp4 - 1280x1238, h264, 24 fps, 114 frames, 4.75 seconds. Every single frame is a keyframe (encoded with keyint=1:min-keyint=1:scenecut=0) plus faststart, so seeking is instant. This matters: the video is not played, it is scrubbed frame-by-frame by scroll position. A normally-encoded video with a standard GOP will stutter badly.
+
+pic1..pic6.jpg - the six gallery images, used in that order by the cards .pg-item-1 through .pg-item-6.
+
+
+NON-OBVIOUS REQUIREMENTS
+
+These are the things that look fine in code review and then break at runtime. Every one of them was found by measuring the live page, not by reading it.
+
+0. THE PAGE SCROLLS ON THE WINDOW. Read this one twice; it is the single most likely way to end up with a page that renders perfectly and does not scroll at all.
+
+Lenis and every ScrollTrigger in this project are bound to the window. If your app shell wraps the content in an element that owns the scroll - the default React/Vite/Next scaffold does exactly this with `#root { height: 100vh; overflow-y: auto }`, and so does any `html, body { height: 100%; overflow: hidden }` - then the document collapses to a single viewport, window.scrollY never changes, no ScrollTrigger ever fires and the page is frozen. Nothing throws. The console stays clean. It just does not move.
+
+Do not wrap this page in a scrolling container. Render it directly into the body. The stylesheet already contains defensive rules that neutralise a scaffold that does it anyway:
+
+  html, body { height: auto !important; }
+  html:not(.lenis-stopped) { overflow: visible !important; }
+  #root, #__next, #app { height: auto !important; min-height: 0 !important; overflow: visible !important; }
+
+Keep those rules. Do not "clean them up".
+
+0b. Ship Lenis' own stylesheet, which is in the code below. Lenis only toggles class names on <html>; every behaviour behind those names lives in CSS you must provide:
+
+  html.lenis, html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+  .lenis.lenis-stopped { overflow: hidden !important; }
+  .lenis.lenis-smooth iframe { pointer-events: none; }
+
+Without `.lenis-stopped { overflow: hidden }` the lenis.stop() that the menu calls on open blocks the mouse wheel but not the scrollbar, the arrow keys, or touch - the page keeps scrolling behind the open panel. Without `scroll-behavior: auto` a host stylesheet that sets `scroll-behavior: smooth` on html (Tailwind and shadcn starters commonly do) fights Lenis for control of every frame.
+
+Note that `.lenis-stopped` hides the root scrollbar while the menu is open. On a platform with classic, space-taking scrollbars that reflows the page by about 15px at the moment the menu opens. This is upstream Lenis behaviour. If it bothers you, add `scrollbar-gutter: stable` to html - at the cost of permanently reserving that gutter.
+
+0c. Do not reintroduce CSS custom properties for the text colours. The glitch section is the only thing that makes its own text white: `.section.glitch { color: #fff }`, inherited four levels down to the scrambling characters, while `body { color: #000 }`. Both used to read `var(--white)` and `var(--black)` from a :root block that came out of a Webflow export carrying two unparsable property names. A browser tolerates that and drops only the bad declarations; a CSS build pipeline drops the whole :root. Then --white no longer exists, `color: var(--white)` is invalid at computed-value time, the property falls back to inherit, body's colour is equally broken, and every character of "we are premium" renders black on a dark elevator. Nothing errors. Both colours are now hard-coded literals and :root is gone from the base stylesheet. Keep them literal.
+
+1. The video must be served over HTTP Range (206 Partial Content). If the host answers 200 to a Range request, video.seekable is empty, currentTime silently refuses to move, and the scrub sticks at frame 0 forever with no error in the console. The hosting above already answers 206.
+
+2. The video element MUST carry an explicit CSS aspect-ratio of 1280 / 1238. Do not set width/height HTML attributes instead - CSS width:100% overrides the width attribute but the height attribute survives as a presentational hint, which pins a wrong fixed height and letterboxes the video. With no intrinsic ratio at all, Chrome lays a <video> out at its default 300x150 until metadata arrives, so the glitch section collapses from about 1462px tall to 150px, the gallery below is yanked up into the hero, its scroll-triggered reveal fires there because its start point is already passed, and everything then drops back down when the 8 MB file finally lands. The user sees the gallery heading flash in the hero and slide away.
+
+3. Set history.scrollRestoration = 'manual' in an early inline script in the head, and scroll to 0 on beforeunload. This page is scroll-driven; a restored scroll offset drops the visitor into the middle of an animation whose entry trigger has already passed.
+
+4. Never take a shortcut in the masked-reveal initialiser. The reveal init is lazy (IntersectionObserver plus requestIdleCallback), so on a slow load or a fast flick it can run when its section is already on screen. If you handle that case by snapping the words visible and returning early, no ScrollTrigger is ever created and the reveal can never play, not even after scrolling back up. Always create the ScrollTrigger; it fires onEnter by itself when its start point has already been passed.
+
+5. The header logo and the footer copyright spin from scroll velocity and snap when scrolling stops. The snap quantum is a FULL turn, 2*PI, not a half turn. The effect this is derived from snaps to PI, which is fine for a mirror-symmetric mark but leaves this monogram resting back-to-front half of the time. Use const TURN = Math.PI * 2 and quantise ceil/floor/round by TURN.
+
+6. The gallery heading is position:sticky and its section is pulled up with margin-top:-70vh, so a ScrollTrigger anchored on the heading evaluates as already-started at load and fires off-screen. Anchor the reveal on the non-sticky .s3-gallery-section instead, with start: 'top 30%'.
+
+7. The gallery section must have background: transparent and its ::before disabled. An opaque black background there covers the elevator video's own fade-to-black and destroys the transition between the two sections.
+
+8. Do not give .glitch-text-w a position or z-index. It relies on its inherited position:absolute; setting relative or a stacking context breaks the layout of the whole glitch section. The dark scrim over the video is .glitch-img-w::after with NO z-index - it paints under .glitch-text-w purely by DOM order.
+
+9. In the mobile stylesheet, the header nav columns are hidden with the selector `.lf-header .col`, not `.lf-c1, .lf-c2, .lf-c3, .lf-c4`. The base rule `.lf-header .col { display: flex }` has specificity 0-2-0 and will beat a bare class selector at 0-1-0 no matter what media query wraps it. Get this wrong and the nav stays on screen on phones and shoves the MENU button off the right edge.
+
+10. Every `<br class="lf-br">` has a real space in front of it in the markup. Those breaks are display:none below 1025px, and without the space the words on either side fuse: "the prompt,and ship", "looks likea studio".
+
+11. The rule that shrinks the sticky gallery heading on small screens must be written AFTER the rule that sets its desktop `height: 60vh`. The source stylesheet gives it `min-height: 70vh` below 768px; an identical override placed earlier in the file loses on source order, not on specificity or media.
+
+12. The footer's 3D copyright block is position:absolute on desktop, straddling the footer's bottom edge. Below 1025px it becomes a static centred block, and the empty right-hand panel that props the desktop grid open is hidden - otherwise it stacks under the links and punches a 191px hole.
+
+
+KNOWN QUIRK, INHERITED FROM THE SOURCE
+
+Below 480px the stylesheet sets `.section.glitch { overflow: visible }` (its base value is `overflow: clip`). During the glitch, a single scrambled letter drifts about 4px past the right edge and the page gains a 4px horizontal scroll for a moment. To reproduce the original exactly, keep `overflow: visible`. To ship it clean, replace that one rule with `overflow-x: clip; overflow-y: visible` - clip, unlike hidden, does not create a scroll container and does not break the sticky elements inside.
+
+
+LAYER HIERARCHY
+
+This is the live DOM after all scripts have run, depth-limited, with the script-generated per-word and per-character spans collapsed.
+
+body
+  div.lf-wrap
+    header.lf-header
+      canvas#lf-logo-canvas.lf-logo
+      div.col.lf-c1
+        div.row1
+          span.arrow.dh-link
+          span.dh-link
+        span.dh-link
+      div.col.lf-c2
+        span.dh-link
+      div.col.lf-c3
+        span.dh-link
+        span.dh-link
+      div.col.lf-c4
+        span.dh-link
+      button.lf-menu
+        span.lbl  "menu"
+        span.lf-burger
+          i
+          i
+          i
+    section.lf-hero
+      div.lf-tag
+        span.dot
+      h1.lf-title
+      div.lf-divider
+        span.lf-tick
+      div.lf-cols
+        p.lf-note.lf-note-left
+          br.lf-br
+          br.lf-br
+        div.lf-note-right
+          p.lf-note
+            br.lf-br
+            br.lf-br
+          button.lf-copy  "Copy prompt"
+  div.glitch-runway
+  section.section.glitch
+    div.glitch-img-w
+      video.img-ascenseur
+    div.glitch-text-w
+      div.glitch-text-sticky-w
+        div.div-block-5
+          div.text-block-6._3
+        div.div-block-5
+          div.text-block-6._1
+        div.div-block-5
+          div.text-block-6._2
+        div.div-block-5
+          div.text-block-6._4
+        div.div-block-5.none
+          div.text-block-6
+        div.div-block-5
+          div.text-block-6._6
+        div.finaltext
+  section#s3-gallery.s3-gallery-section
+    div.gallery-header
+      span.gallery-header-label  "( ship faster )"
+      h2.gallery-header-title
+        span.gh-line
+        span.gh-line
+        span.gh-line
+      p.text1vw  "ship fast"
+    div.pg-gallery
+      div.pg-item.pg-item-1
+        a
+        div.pg-img-wrap
+          img
+      div.pg-item.pg-item-2
+        a
+        div.pg-img-wrap
+          img
+      div.pg-item.pg-item-3
+        a
+        div.pg-img-wrap
+          img
+      div.pg-item.pg-item-4
+        a
+        div.pg-img-wrap
+          img
+      div.pg-item.pg-item-5
+        a
+        div.pg-img-wrap
+          img
+      div.pg-item.pg-item-6
+        a
+        div.pg-img-wrap
+          img
+  footer#site-footer.site-footer
+    div.footer-top
+      div.footer-info-bar
+        span  "AI Prompt Library"
+        span  "Curated Prompts · Ship Faster"
+        span  "Est. 2026 · New York"
+      div.footer-main-content
+        div
+          p.footer-description  "Copy a vetted prompt, paste it once, and s"
+          div.footer-contact-info
+            a  "hello@lafys.com"
+          div.web_add  "Brooklyn, NY US"
+          nav.footer-nav-links
+            a  "Instagram"
+            a  "Threads"
+            a  "Facebook"
+        div.footer-right-panel
+          div.footer-video-thumb
+      div#footer-c-bridge.footer-copyright-bridge
+        canvas#lf-copyright-canvas.lf-copyright-canvas
+    div.footer-copyright-compact
+      span  "Lafys Co"
+      span  "© 2026 LAFYS.COM. ALL RIGHTS RESERVED."
+    div#footer-parallax-section.footer-parallax-section
+      div.footer-parallax-copy
+        div  "Lafys Co"
+        div  "© 2026 LAFYS.COM. ALL RIGHTS RESERVED."
+  div#tm-root.tm-root
+    button#tm-backdrop.tm-backdrop
+    div#tm-panel.tm-panel
+      button.tm-close
+        span  "Close"
+        svg
+          path
+      div.tm-inner
+        ul.tm-menu
+          li.tm-menu-item
+            a.tm-group
+          li.tm-menu-item
+            a.tm-group
+          li.tm-menu-item
+            a.tm-group
+          li.tm-menu-item
+            a.tm-group
+        div.tm-footer
+          div.tm-fgroup
+            span.tm-title.tm-bottom  "Business Enquiry"
+            div.tm-contact
+          div.tm-fgroup
+            span.tm-title.tm-bottom  "Social"
+            div.tm-social
+
+ACCEPTANCE CHECKLIST
+
+The page is correct when all of the following hold. Verify them; do not assume.
+
+Load and layout
+  No horizontal scrollbar at 360, 390, 430, 768, 1024, 1280, 1512 and 1728 px wide.
+  Nothing in the console. No failed network requests.
+  On reload from any scroll position the page starts at the top.
+  The gallery heading is never visible in the hero, not even for one frame on a slow connection. Test it by throttling elevator.mp4 to arrive 2.5 seconds late; the gallery section's offset must not move at all.
+  The hero title breaks into exactly 3 lines from 1025px up, where its first line is indented 170px.
+
+Header
+  Fixed, transparent, 8px from the top. Logo canvas 56x56 on the left, four nav columns positioned by percentage, MENU label plus a three-line burger on the right.
+  Below 768px only the logo and MENU remain, and MENU sits fully inside the viewport.
+  Hovering a nav link rolls each character vertically, staggered 0.03s, power3.inOut, 0.6s.
+
+Header logo, WebGL
+  Chrome monogram, visibly reflective, not matte and not black.
+  Spinning the page scrolls it; the two halves of the mesh lag each other (lerp 0.1 versus 0.4) and re-align when scrolling stops.
+  Every resting position faces the viewer. Scroll down, stop, and read the mark: it must never be mirrored.
+  Moving the mouse tilts it on Y, and the tilt fades out near the top of the page.
+
+Elevator section
+  The video scrubs with scroll: currentTime tracks scroll position monotonically from 0 to 4.75 and back. It never plays on its own.
+  video.seekable.end(0) === 4.75. If it is 0, the host is not answering Range requests.
+  "we are premium" is scrambled character by character into random glyphs as the wave passes, then the letters fall.
+  The final sentence pins at top:24% and reads "We hand you a vetted prompt, then ship a studio-grade site in minutes."
+  The bottom of the video fades to solid black through a 42vh gradient.
+
+Gallery
+  The heading "LIBRARY OF / PREMIUM PROMPTS / BY LAFYS" rises word by word from under a clip, yPercent 130 to 0, power4.out, 1.2s, 0.08s stagger. It fires when the section top reaches 30% of the viewport, and it fires the first time you scroll to it, not before.
+  The heading appears OVER the still-fading elevator video, not on a black band.
+  Six cards reveal by clip-path from the bottom and their images parallax as they pass.
+  Scrolling past the last card lifts the heading away, yPercent -130, staggered.
+
+Footer
+  A chrome 3D copyright mark, spinning clockwise on its own, which you can flick with the pointer and watch it damp back to its idle speed.
+  Below 1025px that mark sits centred in the footer instead of straddling its bottom edge, and the copyright text line is present.
+  hello@lafys.com, Brooklyn NY US, and three social links.
+
+Menu
+  The MENU button opens a white panel from the top right: clipPath circle 0% to 150%, scale 0.9 to 1, rotation 2 to 0, expo.inOut over 1.2s, with the items staggered in.
+  Hovering an item flies the original characters out and fades clones in.
+  Esc, the backdrop, and the CLOSE button all reverse it. Lenis stops while it is open and starts again on close.
+
+Fonts
+  Exactly one typeface on the whole page: Inter Tight, weights 400, 500, 600, 700, from the Google Fonts CDN. Nothing else. The page must make exactly one font request.
+
+
+FULL CODE
+
+What follows is the complete, working page. It runs as-is against the asset URLs above.
+
+<!DOCTYPE html>
+<html lang="en" class="w-mod-js">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>Lafys</title>
+<style>
+/* Base stylesheet: only the rules the page actually uses (extracted from the original
+   57.9 KB Webflow bundle by matching every selector against the live DOM -> 3.9 KB). */
+html { text-size-adjust: 100%; font-family: sans-serif; }
+body { margin: 0px; }
+article, aside, details, figcaption, figure, footer, header, hgroup, main, menu, nav, section, summary { display: block; }
+audio, canvas, progress, video { vertical-align: baseline; display: inline-block; }
+a { background-color: rgba(0, 0, 0, 0); }
+a:active, a:hover { outline: 0px; }
+h1 { margin: 0.67em 0px; font-size: 2em; }
+img { border: 0px; }
+svg:not(:root) { overflow: hidden; }
+button, input, optgroup, select, textarea { color: inherit; font: inherit; margin: 0px; }
+button { overflow: visible; }
+button, select { text-transform: none; }
+button, html input[type="button"], input[type="reset"] { appearance: button; cursor: pointer; }
+* { box-sizing: border-box; }
+html { height: 100%; }
+body { color: rgb(51, 51, 51); background-color: rgb(255, 255, 255); min-height: 100%; margin: 0px; font-family: Arial, sans-serif; font-size: 14px; line-height: 20px; }
+img { vertical-align: middle; max-width: 100%; display: inline-block; }
+h1, h2, h3, h4, h5, h6 { margin-bottom: 10px; font-weight: 700; }
+h1 { margin-top: 20px; font-size: 38px; line-height: 44px; }
+h2 { margin-top: 20px; font-size: 32px; line-height: 36px; }
+p { margin-top: 0px; margin-bottom: 10px; }
+ul, ol { margin-top: 0px; margin-bottom: 10px; padding-left: 40px; }
+button, [type="button"], [type="reset"] { cursor: pointer; appearance: button; border: 0px; }
+@keyframes spin { 
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+body { background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); font-family: "Inter Tight", Arial, sans-serif; font-size: 14px; font-weight: 500; line-height: 1.1; }
+h1 { letter-spacing: -0.01em; margin-top: 0px; margin-bottom: 0px; font-size: 5rem; font-weight: 500; line-height: 1; }
+h2 { letter-spacing: -0.01em; margin-top: 0px; margin-bottom: 0px; font-size: 3.75rem; font-weight: 500; line-height: 1; }
+p { margin-bottom: 0px; font-size: 1rem; font-weight: 400; line-height: 1.4; }
+a { color: inherit; text-decoration: none; }
+.arrow { justify-content: flex-start; align-items: center; display: flex; position: absolute; }
+.section.glitch { background-color: rgb(0, 0, 0); color: rgb(255, 255, 255); position: relative; overflow: clip; }
+.glitch-text-w { justify-content: center; align-items: flex-start; width: 100%; display: flex; position: absolute; inset: 0%; }
+.glitch-text-sticky-w { gap: 0px; grid-template-rows: auto auto; grid-template-columns: 1fr 1fr 1fr; grid-auto-columns: 1fr; width: 100vw; min-height: 100vh; display: grid; position: sticky; top: 0px; }
+.div-block-5 { gap: 16px; grid-template-rows: auto auto; grid-template-columns: 1fr; grid-auto-columns: 1fr; display: block; position: relative; }
+.div-block-5.none { opacity: 0; }
+.text-block-6 { font-family: "Inter Tight", Arial, sans-serif; font-size: 1.125rem; font-weight: 400; line-height: 1; }
+.text-block-6._1 { position: absolute; inset: 23% auto auto -18%; }
+.text-block-6._6 { position: absolute; inset: 9% auto auto 36%; }
+.text-block-6._2 { position: absolute; inset: 40% auto auto 23%; }
+.text-block-6._3 { position: absolute; inset: auto 29% 23% auto; }
+.text-block-6._4 { position: absolute; inset: 6% 0% auto auto; }
+.img-ascenseur { opacity: 0.8; width: 100%; }
+.finaltext { font-family: "Inter Tight", Arial, sans-serif; font-size: 1.125rem; font-weight: 400; line-height: 1; position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); }
+@media screen and (max-width: 767px) {
+  h1 { font-size: 4.5em; }
+  h2 { font-size: 3.25em; }
+  .glitch-img-w { height: 100vh; }
+  .text-block-6 { font-size: 0.75rem; }
+  .img-ascenseur { object-fit: cover; height: 100%; }
+}
+@media screen and (max-width: 479px) {
+  .section.glitch { overflow: visible; }
+  .finaltext { top: 45%; }
+}
+</style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    /* Scroll-driven page: a restored scroll offset drops the user mid-animation (the gallery
+       heading lands on screen already "past" its reveal) and makes the page visibly jump from
+       the top to the restored position on reload. Always start at 0. */
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.addEventListener('beforeunload', function () { window.scrollTo(0, 0); });
+  </script>
+  <style>
+    /* Standalone framing: keep the page black so the black sections don't flash white */
+    html, body { background-color: #000; }
+
+    /* ── Lenis' required stylesheet. Lenis only toggles classes on <html>; the behaviour behind
+       them lives here. Without `.lenis-stopped { overflow: hidden }` a lenis.stop() (which the
+       menu calls on open) blocks the wheel but NOT the scrollbar, keyboard or touch, so the page
+       still scrolls behind the open panel. `scroll-behavior: auto` stops a host stylesheet's
+       `scroll-behavior: smooth` from fighting Lenis for every frame. ── */
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+    .lenis.lenis-stopped { overflow: hidden !important; }
+    .lenis.lenis-smooth iframe { pointer-events: none; }
+
+    /* ── This page scrolls on the WINDOW. Lenis and every ScrollTrigger are bound to it. If a host
+       shell (React/Next scaffolds do this by default) puts the content inside a element with its
+       own height and overflow, the document collapses to one viewport, window.scrollY never moves
+       and the whole page appears frozen — no error, everything just stops. Neutralise that here.
+       html/body overflow is left to the .lenis-stopped rule above, which must keep winning. ── */
+    html, body { height: auto !important; }
+    html:not(.lenis-stopped) { overflow: visible !important; }
+    #root, #__next, #app { height: auto !important; min-height: 0 !important; overflow: visible !important; }
+
+    /* ─────────────────────────────────────────────────────────────────────────
+       Header + hero — ported 1:1 from Figma node 33:194 ("Lafys").
+       Design frame = 1728px wide; horizontal offsets kept as % of that width so
+       the layout scales; typography kept in px (hero title fluid via clamp).
+       ───────────────────────────────────────────────────────────────────────── */
+    .lf-wrap{position:relative;width:100%;font-family:'Inter Tight',system-ui,-apple-system,sans-serif;color:#fff;}
+    .lf-wrap *{box-sizing:border-box;}
+    .lf-hero{position:relative;padding-top:146px;padding-bottom:80px;}
+
+    /* header (fixed over the page, stays pinned while scrolling) */
+    .lf-header{position:fixed;top:8px;left:0;right:0;height:47px;z-index:20;font-size:10px;line-height:12px;text-transform:uppercase;}
+    .lf-logo{position:absolute;top:2px;left:20px;width:56px;height:56px;display:block;pointer-events:none;}
+    .lf-header .col{position:absolute;display:flex;flex-direction:column;gap:2px;font-weight:600;letter-spacing:.02em;}
+    .lf-c1{left:22.98%;top:10px;}
+    .lf-c1 .row1{display:flex;align-items:center;gap:6px;}
+    .lf-c1 .arrow{font-weight:400;}
+    .lf-c2{left:39.35%;top:7px;}
+    .lf-c3{left:51.91%;top:7px;}
+    .lf-c4{left:68.06%;top:7px;}
+    /* menu: no box, just the label underlined (as in the design) + burger */
+    .lf-menu{position:absolute;top:0;right:20px;height:28px;display:flex;align-items:center;gap:10px;
+             border:none;background:transparent;color:#fff;font:inherit;font-size:10px;line-height:12px;font-weight:500;
+             text-transform:uppercase;letter-spacing:.02em;cursor:pointer;}
+    .lf-menu .lbl{border-bottom:1px solid #fff;padding-bottom:3px;}
+    .lf-burger{display:inline-flex;flex-direction:column;gap:3px;width:16px;}
+    .lf-burger i{height:1px;background:#fff;display:block;}
+
+    /* hero */
+    .lf-tag{position:absolute;top:161px;left:11.2%;display:flex;align-items:center;gap:8px;font-size:10px;line-height:12px;
+            font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);}
+    .lf-tag .dot{width:3px;height:3px;background:#d9d9d9;}
+    .lf-title{margin:0 0 0 11%;text-indent:170px;font-weight:500;font-size:clamp(30px,3.62vw,62.6px);line-height:1.07;}
+    .lf-divider{position:relative;margin:48px 11.17% 0 11.17%;height:1px;background:#272727;}
+    .lf-tick{position:absolute;left:70.1%;top:-8px;width:1px;height:16px;background:#272727;}
+    .lf-cols{position:relative;margin-top:48px;}
+    .lf-note{margin:0;font-size:14px;line-height:1.2;font-weight:500;text-transform:uppercase;color:#6e6e6e;white-space:nowrap;}
+    .lf-note-left{margin-left:11.11%;}
+    .lf-note-right{position:absolute;top:0;right:11.17%;}
+    .lf-copy{margin-top:29px;height:28px;padding:0 11px;display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.35);
+             background:transparent;color:#fff;font:inherit;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.02em;cursor:pointer;}
+
+    /* ── Tablet: 768–1024. The header nav still fits, but the hero's fixed <br> breaks and the
+       170px first-line indent do not — the title orphans a word onto its own line. Let the copy
+       reflow and drop the indent (the "• ABOUT" tag moves above the title, so nothing needs the
+       gap any more). ── */
+    @media (min-width:768px) and (max-width:1024px){
+      .lf-br{display:none;}
+      .lf-note{white-space:normal;}
+      .lf-hero{padding-top:120px;padding-bottom:64px;}
+      .lf-tag{position:static;margin:0 0 20px 6%;}
+      .lf-title{margin:0 6%;text-indent:0;font-size:clamp(34px,5.4vw,52px);}
+      .lf-divider{margin:44px 6% 0;}
+      /* Desktop keeps the right note absolutely positioned and both notes on one nowrap line.
+         Once the copy is allowed to wrap, an absolute right note and a full-width left note
+         print on top of each other — lay the two out as real columns instead. */
+      .lf-cols{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:48px 6% 0;}
+      .lf-note-left{margin-left:0;}
+      .lf-note-right{position:static;top:auto;right:auto;}
+    }
+
+    @media (max-width:767px){
+      .lf-header{position:fixed;top:0;left:0;right:0;height:auto;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;}
+      .lf-logo{position:static;}
+      /* `.lf-header .col` (specificity 0,2,0) declares display:flex, so a bare `.lf-c1` (0,1,0)
+         could never hide it — the nav stayed on screen and pushed MENU past the right edge.
+         Match the same 0,2,0 selector to win. */
+      .lf-header .col{display:none;}
+      .lf-header .lf-menu{position:static;}
+      .lf-br{display:none;}
+      .lf-note{white-space:normal;}
+      .lf-hero{padding-top:76px;padding-bottom:40px;}
+      .lf-tag{position:static;margin:0 0 24px 16px;}
+      /* tag sits above the title now, so the first line needs no indent to clear it */
+      .lf-title{margin:0 16px;text-indent:0;font-size:clamp(26px,8.2vw,34px);}
+      .lf-divider{margin:32px 16px 0;}
+      .lf-cols{margin-top:24px;}
+      .lf-note-left{margin:0 16px;}
+      .lf-note-right{position:static;margin:24px 16px 0;}
+      .section.glitch .finaltext{font-size:14px;}
+    }
+    /* Short black runway so you can scroll INTO the glitch section and build the
+       scroll velocity that drives the character-scramble (matches the live site,
+       where this section follows the studio block). */
+    .glitch-runway { height: 12.6vh; background:#000; }
+    /* elevator media is now a <video> (scrubbed by scroll) — keep it covering like the image did */
+    .section.glitch .glitch-img-w { position:relative; }
+    /* Reserve the video's box before its metadata arrives. Without an intrinsic ratio Chrome
+       lays a <video> out at the default 300x150, so this section collapses from ~1462px to
+       150px on load: the gallery below is pulled up into the hero, its reveal fires there
+       (its start point is already passed), and everything drops down once the 8MB file lands.
+       The real file is 1280x1238. On mobile the sheet below sets height:100%, which wins —
+       a definite height makes aspect-ratio inert, so the object-fit:cover crop still works. */
+    .section.glitch .glitch-img-w video.img-ascenseur { display:block; opacity:1; aspect-ratio: 1280 / 1238; }
+    /* subtle dark overlay ABOVE the video but BELOW the text: no z-index, so it paints under
+       .glitch-text-w (which comes later in the DOM). .glitch-text-w is left untouched. */
+    .section.glitch .glitch-img-w::after { content:""; position:absolute; inset:0;
+      background:rgba(0,0,0,.32); pointer-events:none; }
+    /* bottom gradient fade to black — restored from the removed .img-glitch-w
+       (linear-gradient(0deg, black, transparent)); smooth transition into the next section */
+    .section.glitch .glitch-img-w::before { content:""; position:absolute; left:0; right:0; bottom:0;
+      height:42vh; background:linear-gradient(0deg,#000 0%,transparent 100%); pointer-events:none; z-index:1; }
+    /* finaltext ("We create brand experiences…") freezes higher on screen (was top:35%) */
+    .section.glitch .finaltext { top: 24%; }
+
+    /* ══ Archive gallery + footer — scoped (host global html/body/* rules dropped) ══ */
+    .s3-gallery-section, .site-footer { font-family: var(--font-family-body); font-size: var(--type-root); }
+    .s3-gallery-section *, .site-footer * { box-sizing: border-box; }
+
+    /* ── Design tokens (подмножество :root исходного сайта) ── */
+    :root {
+      --color-text: #fff;
+      --color-bg: #000;
+      --font-family-body: "Inter Tight", system-ui, -apple-system, sans-serif;
+      --font-family-display: "Inter Tight", system-ui, -apple-system, sans-serif;
+      --type-root: clamp(13px, 12.4px + 0.2vw, 16px);
+      --text-2xs: clamp(0.6875rem, 0.66rem + 0.14vw, 0.75rem);
+      --text-xs: clamp(0.75rem, 0.72rem + 0.22vw, 0.85rem);
+      --text-sm: clamp(0.8125rem, 0.77rem + 0.28vw, 0.95rem);
+      --text-base: clamp(0.9375rem, 0.9rem + 0.28vw, 1.05rem);
+      --text-md: clamp(1rem, 0.94rem + 0.44vw, 1.2rem);
+      --text-display-sm: clamp(2.8rem, 4.6vw, 4.8rem);
+      --text-display-lg: clamp(4rem, 15vw, 11.5rem);
+      --leading-tight: 1;
+      --leading-display: 0.88;
+      --leading-body: 1.7;
+      --tracking-display: -0.02em;
+      --tracking-brand: 0.02em;
+      --tracking-copy: 0.03em;
+      --tracking-meta: 0.12em;
+      --tracking-caps: 0.18em;
+    }
+
+    
+
+    
+
+    
+
+    /* небольшая «прокрутка» перед секцией, чтобы reveal-триггеры срабатывали при скролле */
+    
+
+    /* =========================================================
+       SECTION 3: PARALLAX GALLERY
+       ========================================================= */
+    #s3-gallery {
+      position: relative;
+      z-index: 3;
+    }
+
+    .s3-gallery-section {
+      position: relative;
+      background: #000;
+      isolation: isolate;
+    }
+
+    .s3-gallery-section::before,
+    .s3-gallery-section::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: clamp(96px, 18vh, 220px);
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .s3-gallery-section::before {
+      top: 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.72) 38%, rgba(0, 0, 0, 0) 100%);
+    }
+
+    .s3-gallery-section::after {
+      bottom: 0;
+      background: linear-gradient(0deg, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.78) 36%, rgba(0, 0, 0, 0) 100%);
+    }
+
+    .gallery-header-video {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .gallery-header-video video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+      .gallery-header-video { display: none; }
+    }
+
+    .gallery-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 0 4vw;
+      background: #000;
+    }
+
+    .gallery-header-label {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-family-body);
+      font-size: var(--text-xs);
+      letter-spacing: var(--tracking-meta);
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 3vh;
+      line-height: 1.4;
+    }
+
+    .gallery-header-title {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-family-display);
+      font-size: clamp(2.5rem, 1.35rem + 2.875vw, 5rem);
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 1.5rem;
+      line-height: 1.05;
+      letter-spacing: var(--tracking-brand);
+      text-transform: uppercase;
+    }
+
+    .gallery-header-title.exit-zoom-blur {
+      will-change: transform, opacity;
+      transition: transform 0.6s, filter 0.6s, opacity 0.6s;
+      transform: scale(0.7);
+      filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .gh-line { display: block; }
+
+    .gallery-header-sub {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-family-body);
+      font-size: clamp(10px, 1vw, 14px);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.3);
+      margin: 0;
+    }
+
+    .text1vw {
+      font-size: clamp(0.875rem, 1vw, 1.2rem);
+      font-weight: 400;
+      color: #fff;
+      white-space: nowrap;
+      letter-spacing: 0.05em;
+      line-height: 1;
+    }
+
+    .pg-gallery {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 4vw 22vh;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      column-gap: 2vw;
+      row-gap: 12vw;
+    }
+
+    .pg-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ★ Предустановка видимости (fallback): если GSAP/JS не загрузился — картинки всё равно видны */
+    .pg-img-wrap {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      overflow: hidden;
+      background-color: #0d0d0d;
+      border-radius: 2px;
+    }
+
+    /* ★ Кроп включаем только когда GSAP готов (html.pg-anim-ready) — под маску-въезд */
+    html.pg-anim-ready .pg-img-wrap {
+      clip-path: inset(100% 0% 0% 0%);
+    }
+
+    /* ★ Высота 140%, top:-20% — запас под параллакс-сдвиг, чтобы не оголить чёрный низ */
+    .pg-img-wrap img {
+      position: absolute;
+      top: -20%;
+      left: 0;
+      width: 100%;
+      height: 140%;
+      object-fit: cover;
+      will-change: transform;
+    }
+
+    .pg-item-1 { grid-column: 1 / 6;  grid-row: 1; height: 27.9vw; }
+    .pg-item-2 { grid-column: 7 / 13; grid-row: 2; height: 33.75vw; }
+    .pg-item-3 { grid-column: 4 / 10; grid-row: 3; height: 33.75vw; }
+    .pg-item-4 { grid-column: 1 / 6;  grid-row: 4; height: 27.9vw; }
+    .pg-item-5 { grid-column: 7 / 13; grid-row: 5; height: 33.75vw; }
+    .pg-item-6 { grid-column: 4 / 10; grid-row: 6; height: 33.75vw; }
+
+    @media (max-width: 768px) {
+      .gallery-header {
+        position: relative;
+        top: auto;
+        height: auto;
+        min-height: 70vh;
+        z-index: 4;
+      }
+
+      .pg-gallery {
+        display: flex;
+        flex-direction: column;
+        gap: 15vw;
+        padding: 10vw;
+      }
+
+      .pg-item {
+        height: 70vw !important;
+        margin-top: 0 !important;
+      }
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+    .site-footer {
+      position: relative;
+      overflow: visible;
+      background: #000;
+      color: #fff;
+      padding: 0;
+      font-family: var(--font-family-body);
+    }
+
+    .footer-top {
+      padding: 3vw 2.5vw;
+      position: relative;
+      z-index: 5;
+      background-color: #000;
+    }
+
+    .footer-info-bar {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #222;
+      padding-top: 30px;
+      margin-bottom: 40px;
+      font-family: var(--font-family-body);
+      font-size: var(--text-xs);
+      letter-spacing: var(--tracking-meta);
+      line-height: 1.4;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .footer-main-content {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+    }
+
+    .footer-description {
+      font-family: var(--font-family-body);
+      font-size: var(--text-xs);
+      letter-spacing: var(--tracking-copy);
+      line-height: var(--leading-body);
+      color: #666;
+      max-width: 450px;
+      margin-bottom: 32px;
+    }
+
+    .footer-contact-info a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      font-size: clamp(20px, 3.5vw, 50px);
+      font-weight: 400;
+      margin-bottom: 4px;
+      transition: opacity 0.2s;
+    }
+
+    .footer-contact-info a:hover { opacity: 0.6; }
+
+    .footer-contact-info span {
+      color: #fff;
+      font-size: clamp(18px, 2.5vw, 30px);
+    }
+
+    .web_add { color: #575757; }
+
+    .footer-nav-links {
+      display: flex;
+      gap: 28px;
+      margin-top: 38px;
+    }
+
+    .footer-nav-links a {
+      color: #fff;
+      text-decoration: none;
+      font-family: var(--font-family-body);
+      font-size: var(--text-xs);
+      letter-spacing: var(--tracking-meta);
+      line-height: 1.4;
+      text-transform: uppercase;
+      transition: opacity 0.2s;
+    }
+
+    .footer-nav-links a:hover { opacity: 0.5; }
+
+    .footer-right-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-start;
+    }
+
+    .footer-video-thumb {
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .footer-video-thumb img,
+    .footer-video-thumb video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .footer-copyright-bridge {
+      position: absolute;
+      bottom: 0;
+      right: 6%;
+      width: clamp(90px, 10vw, 148px);
+      height: clamp(90px, 10vw, 148px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translateY(50%);
+      z-index: 20;
+    }
+
+    .footer-copyright-bridge span {
+      font-family: var(--font-family-display);
+      font-size: clamp(6rem, 12vw, 11.25rem);
+      font-weight: 600;
+      color: #fff;
+      line-height: var(--leading-tight);
+    }
+    /* 3D copyright (chrome, spins continuously + flick-to-spin) replaces the © glyph */
+    .footer-copyright-bridge canvas { width: 100%; height: 100%; display: block;
+      cursor: grab; touch-action: none; }
+    .footer-copyright-bridge canvas:active { cursor: grabbing; }
+
+    .footer-parallax-section {
+      height: 20vh;   /* trimmed further — still too much empty space at the bottom */
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-parallax-copy {
+      position: absolute;
+      top: 30px;
+      left: 40px;
+      z-index: 3;
+      color: rgba(255, 255, 255, 0.65);
+      font-family: var(--font-family-body);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      line-height: 1.7;
+      pointer-events: none;
+    }
+
+    @media (max-width: 1440px) {
+      .footer-parallax-section { height: 120px; }
+    }
+
+    /* ── Footer Reveal System ── */
+    .footer-info-line {
+      height: 1px;
+      background: #222;
+      transform-origin: left center;
+      margin-bottom: 18px;
+      will-change: transform;
+    }
+
+    .frev-wrap {
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: bottom;
+    }
+
+    .footer-video-cover {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0a;
+      z-index: 2;
+      pointer-events: none;
+      transform-origin: right center;
+      will-change: transform;
+    }
+
+    /* Shown only where the 3D © bridge + parallax section are hidden (see below). */
+    .footer-copyright-compact { display: none; }
+
+    @media (max-width: 1024px) {
+      .footer-parallax-section { display: none !important; }
+
+      /* The 3D © used to be hidden here together with the parallax section, which left a tall
+         empty band under the footer links. Keep it: drop the absolute placement (on desktop it
+         straddles the footer's bottom edge) and let it sit as a centred block in that space. */
+      .footer-copyright-bridge {
+        position: static;
+        transform: none;
+        right: auto;
+        bottom: auto;
+        margin: 40px auto 0;
+        width: clamp(140px, 44vw, 240px);
+        height: clamp(140px, 44vw, 240px);
+      }
+
+      .footer-copyright-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 40px 6% 32px;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: #6e6e6e;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .footer-copyright-compact { padding: 32px 16px 24px; }
+    }
+
+    @media (max-width: 768px) {
+      .footer-main-content { grid-template-columns: 1fr; }
+      .footer-info-bar { display: none; }
+      .footer-right-panel { align-items: flex-start; margin-top: 40px; }
+      /* The empty thumb only exists to hold the right-hand column open next to the footer text.
+         Once the grid collapses to one column it stacks underneath and punches a 191px hole. */
+      .footer-right-panel { display: none; }
+    }
+      /* Pull the gallery (and everything below it) UP so its heading overlaps ONTO the
+       elevator section — the ARCHIVE title appears over the elevator while it fades to black.
+       Gallery header/section made transparent so the elevator (and its fade-to-black) shows
+       through; the page's black bg backs the cards once the elevator has scrolled away. */
+    .s3-gallery-section { margin-top: -70vh; background: transparent; }
+    .s3-gallery-section::before { display: none; }  /* keep the elevator's own fade, no extra band */
+    /* shorter sticky header so the cards (and footer) follow the title up instead of sitting
+       a full 100vh below it */
+    .gallery-header { justify-content: flex-start; padding-top: 10vh; background: transparent; height: 60vh; }
+    /* The source stylesheet gives this sticky heading `min-height:70vh` below 768px, which beats
+       the `height` above and leaves ~0.5 screen of dead black under the title (desktop: ~0.2).
+       These two rules must live HERE, after that declaration — an identical rule placed in the
+       responsive block near the top of this file loses on source order, not specificity. */
+    @media (min-width: 768px) and (max-width: 1024px) { .gallery-header { min-height: 0; height: 44vh; } }
+    @media (max-width: 767px)                         { .gallery-header { min-height: 0; height: 48vh; } }
+    /* Hide the heading until the reveal JS builds & hides its word-spans — otherwise it flashes
+       fully-visible on load, then "runs down" (yPercent:130) when the lazy reveal inits.
+       Use opacity (NOT visibility) — visibility:hidden makes el.innerText return "" and the
+       reveal builder then splits empty text into empty spans, wiping the title. */
+    .s3-gallery-section .gallery-header-title { opacity: 0; }
+
+    /* Menu close button (X + "Close"), top-right of the white panel */
+    .tm-close{position:absolute;top:24px;right:24px;z-index:4;display:inline-flex;align-items:center;gap:8px;
+      background:transparent;border:none;cursor:pointer;color:#434343;font-family:'Inter Tight',system-ui,sans-serif;
+      font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;line-height:1;padding:6px;}
+    .tm-close:hover{opacity:.55;}
+    .tm-close svg{display:block;}
+  </style>
+</head>
+<body>
+<!-- ── Header + hero (Figma node 33:194, "Lafys") ── -->
+<div class="lf-wrap">
+  <header class="lf-header">
+    <canvas class="lf-logo" id="lf-logo-canvas"></canvas>
+    <div class="col lf-c1">
+      <div class="row1"><span class="arrow">→</span><span>Featured (01)</span></div>
+      <span>Index (02)</span>
+    </div>
+    <div class="col lf-c2"><span>About(03)</span></div>
+    <div class="col lf-c3">
+      <span>info@lafys.com</span>
+      <span>+(1) 201-214-8640</span>
+    </div>
+    <div class="col lf-c4"><span>the best prompts</span></div>
+    <button class="lf-menu" type="button" onclick="window.lafysMenu&&window.lafysMenu.toggle()"><span class="lbl">menu</span><span class="lf-burger"><i></i><i></i><i></i></span></button>
+  </header>
+
+  <section class="lf-hero">
+    <div class="lf-tag"><span class="dot"></span>About</div>
+    <h1 class="lf-title">Lafys is an intelligent network system building <br class="lf-br"/>phenomenal smart predictions through analysis, <br class="lf-br"/>models, and algorithms.</h1>
+    <div class="lf-divider"><span class="lf-tick"></span></div>
+    <div class="lf-cols">
+      <p class="lf-note lf-note-left">You watch, copy the prompt, <br class="lf-br"/>and ship a site that looks like <br class="lf-br"/>a studio built it.</p>
+      <div class="lf-note-right">
+        <p class="lf-note">Every prompt is written by people who design for <br class="lf-br"/>a living, then tested until the output actually <br class="lf-br"/>matches the preview you see.</p>
+        <button class="lf-copy">Copy prompt</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="glitch-runway"></div>
+<section class="section glitch"><div class="glitch-img-w"><video class="img-ascenseur" src="https://qclay.design/lovable/nothin/elevator.mp4" muted playsinline preload="auto"></video></div><div class="glitch-text-w"><div class="glitch-text-sticky-w"><div class="div-block-5"><div class="text-block-6 _3">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="div-block-5"><div class="text-block-6 _1">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="div-block-5"><div class="text-block-6 _2">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="div-block-5"><div class="text-block-6 _4">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="div-block-5 none"><div class="text-block-6">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="div-block-5"><div class="text-block-6 _6">we are premium<br/>we are premium<br/>we are premium<br/>Pj(è !!” .      U§hs .   jkj . k .     rh</div></div><div class="finaltext">We hand you a vetted<br/>prompt, then ship<br/>a studio-grade<br/>site in<br/>minutes.</div></div></div></section>
+<!-- ══ Archive gallery + footer (replaces the 2 parallax photos & old footer) ══ -->
+<section class="s3-gallery-section" id="s3-gallery">
+    <div class="gallery-header">
+      <span class="gallery-header-label" data-reveal="fade">( ship faster )</span>
+      <h2 class="gallery-header-title">
+        <span class="gh-line" data-reveal="word">LIBRARY OF</span>
+        <span class="gh-line" data-reveal="word">PREMIUM PROMPTS</span>
+        <span class="gh-line" data-reveal="word">BY LAFYS</span>
+      </h2>
+      <p class="text1vw" data-reveal="fade" data-reveal-delay="0.3">ship fast</p>
+    </div>
+
+    <div class="pg-gallery">
+      <div class="pg-item pg-item-1">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic1.jpg" alt="Work 01" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="pg-item pg-item-2">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic2.jpg" alt="Work 02" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="pg-item pg-item-3">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic3.jpg" alt="Work 03" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="pg-item pg-item-4">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic4.jpg" alt="Work 04" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="pg-item pg-item-5">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic5.jpg" alt="Work 05" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="pg-item pg-item-6">
+        <a href="#" aria-label="View work" style="position:absolute;inset:0;z-index:5;"></a>
+        <div class="pg-img-wrap"><img src="https://qclay.design/lovable/nothin/pic6.jpg" alt="Work 06" loading="lazy" decoding="async"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="site-footer" id="site-footer">
+    <div class="footer-top">
+      <div class="footer-info-bar">
+        <span>AI Prompt Library</span>
+        <span>Curated Prompts · Ship Faster</span>
+        <span>Est. 2026 · New York</span>
+      </div>
+
+      <div class="footer-main-content">
+        <div>
+          <p class="footer-description">
+            Copy a vetted prompt, paste it once, and ship a studio-grade site in mere minutes.
+          </p>
+          <div class="footer-contact-info">
+            <a href="#">hello@lafys.com</a>
+          </div>
+          <div class="web_add" style="font-size:14px;margin-top:8px;">Brooklyn, NY US</div>
+          <nav class="footer-nav-links">
+            <a href="#">Instagram</a>
+            <a href="#">Threads</a>
+            <a href="#">Facebook</a>
+          </nav>
+        </div>
+
+        <div class="footer-right-panel">
+          <!-- footer.webp removed; empty thumb kept to preserve the layout spacing -->
+          <div class="footer-video-thumb"></div>
+        </div>
+      </div>
+
+      <div class="footer-copyright-bridge" id="footer-c-bridge">
+        <canvas class="lf-copyright-canvas" id="lf-copyright-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Below 1024px both the 3D © bridge and the parallax section are hidden, which took the
+         copyright line with them. This plain-text line stands in for them there. -->
+    <div class="footer-copyright-compact">
+      <span>Lafys Co</span>
+      <span>&#169; 2026 LAFYS.COM. ALL RIGHTS RESERVED.</span>
+    </div>
+
+    <div class="footer-parallax-section" id="footer-parallax-section">
+      <div class="footer-parallax-copy">
+        <div>Lafys Co</div>
+        <div>&#169; 2026 LAFYS.COM. ALL RIGHTS RESERVED.</div>
+      </div>
+    </div>
+  </footer>
+
+<!-- ── Libraries (GSAP + ScrollTrigger + Lenis smooth-scroll, as on the live site) ── -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   "we are premium" glitch — ported 1:1 from the source bundle (main.js: cx/ax/hC/dC).
+   Two coupled mechanisms:
+     1. Scroll-velocity SCRAMBLE — a wave of random characters travels through each
+        text block; its intensity tracks how fast you scroll (rAF-eased).
+     2. Scroll-scrubbed FALL — every character drops / rotates / fades out as you
+        scroll from the section top, "breaking" the letters and numbers apart.
+   Plus the elevator image fade and the merguez / ballon parallax.
+   ──────────────────────────────────────────────────────────────────────────── */
+gsap.registerPlugin(ScrollTrigger);
+
+/* Lenis smooth scroll, wired to ScrollTrigger (same integration the site uses). */
+const lenis = new Lenis();
+window.lenis = lenis;          // exposed so the scroll-spin logo module can reuse this instance
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add((t) => lenis.raf(t * 1000));
+gsap.ticker.lagSmoothing(0);
+
+/* Exact constants from the bundle. */
+const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789#$()!?"§&<>@*+-'; // sx
+const WINDOW = 22;      // ox — how many chars the scramble wave spans
+const FRAME_MOD = 8;    // uC — scramble updates every N animation frames
+const FINAL_WINDOW = 4; // fC — scramble edge width of the final-text reveal
+
+/* ax — split an element's text into per-character inline-block spans. */
+function splitChars(root) {
+  const out = [];
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const frag = document.createDocumentFragment();
+      for (const ch of node.textContent) {
+        if (ch === ' ' || ch === ' ' || ch === '\n') {
+          frag.appendChild(document.createTextNode(ch));
+        } else {
+          const span = document.createElement('span');
+          span.style.display = 'inline-block';
+          span.textContent = ch;
+          frag.appendChild(span);
+          out.push({ span, original: ch });
+        }
+      }
+      node.parentNode.replaceChild(frag, node);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      [...node.childNodes].forEach(walk);
+    }
+  }
+  [...root.childNodes].forEach(walk);
+  return out;
+}
+
+/* lx — one random glitch character. */
+function randChar() {
+  return CHARS[Math.floor(Math.random() * CHARS.length)];
+}
+
+/* hC — scramble a block: a WINDOW-wide wave starting at `head`, strength `intensity`. */
+function scrambleBlock(chars, head, intensity) {
+  const n = chars.length;
+  if (!n) return;
+  const i = ((Math.floor(head) % n) + n) % n;
+  chars.forEach(({ span, original }, a) => {
+    let c = a - i;
+    if (c < 0) c += n;
+    if (c < WINDOW) {
+      const l = intensity * Math.pow(1 - c / WINDOW, 0.6);
+      span.textContent = Math.random() < l ? randChar() : original;
+    } else {
+      span.textContent = original;
+    }
+  });
+}
+
+/* dC — reveal the final sentence progressively, scrambled at its leading edge. */
+function revealFinal(chars, progress) {
+  if (!chars.length) return;
+  const t = progress * chars.length;
+  chars.forEach(({ span, original }, s) => {
+    if (s < t - FINAL_WINDOW) {
+      span.style.opacity = '1';
+      span.textContent = original;
+    } else if (s < t) {
+      span.style.opacity = '1';
+      span.textContent = randChar();
+    } else {
+      span.style.opacity = '0';
+      span.textContent = original;
+    }
+  });
+}
+
+/* cx — wire up every .section.glitch. */
+function setupGlitch() {
+  document.querySelectorAll('.section.glitch').forEach((section) => {
+    const blocks = [...section.querySelectorAll('.text-block-6')];
+    if (!blocks.length) return;
+
+    const blockChars = blocks.map(splitChars);                       // i
+    const allChars = blockChars.flat();                              // s
+    const maxLen = Math.max(...blockChars.map((c) => c.length), 1);  // o
+
+    const finalEl = section.querySelector('.finaltext');
+    const finalChars = finalEl ? splitChars(finalEl) : [];           // l
+    finalChars.forEach(({ span }) => { span.style.opacity = '0'; });
+
+    let smooth = 0, target = 0, head = 0, raf = null;
+    let running = false, frame = 0, fallTL = null, lastProg = -1;
+
+    function tick() {
+      if (!running) return;
+      frame++;
+      smooth += (target - smooth) * 0.14;
+      target *= 0.9;
+      if (frame % FRAME_MOD === 0) {
+        if (smooth > 0.01) {
+          head = (head + 1 + smooth * 10) % maxLen;
+          blockChars.forEach((c) => scrambleBlock(c, head, smooth));
+        } else {
+          allChars.forEach(({ span, original }) => { span.textContent = original; });
+        }
+        if (finalChars.length && fallTL) {
+          const w = fallTL.scrollTrigger ? fallTL.scrollTrigger.progress : 0;
+          if (Math.abs(w - lastProg) > 2e-4) {
+            revealFinal(finalChars, w);
+          } else {
+            const L = w * finalChars.length;
+            finalChars.forEach(({ span, original }, I) => {
+              span.style.opacity = I < L ? '1' : '0';
+              span.textContent = original;
+            });
+          }
+          lastProg = w;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      if (running) return;
+      running = true; frame = 0;
+      raf = requestAnimationFrame(tick);
+    }
+    function stop() {
+      running = false; target = 0; smooth = 0;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      allChars.forEach(({ span, original }) => { span.textContent = original; });
+      finalChars.forEach(({ span, original }) => { span.style.opacity = '0'; span.textContent = original; });
+      lastProg = -1;
+    }
+
+    /* Scramble driver: intensity from scroll velocity while the section is in view. */
+    ScrollTrigger.create({
+      trigger: section, start: 'top bottom', end: 'bottom top',
+      onEnter: start, onLeave: stop, onEnterBack: start, onLeaveBack: stop,
+      onUpdate(self) {
+        const v = Math.abs(self.getVelocity());
+        target = Math.min(v / 3400, 0.45);
+      },
+    });
+
+    /* Scrubbed fall: each character drops / rotates / fades as you scroll in. */
+    fallTL = gsap.timeline({
+      scrollTrigger: { trigger: section, start: 'top top', end: 'center 30%', scrub: 2 },
+    });
+    blockChars.forEach((chars, idx) => {
+      const base = idx * 0.06;
+      chars.forEach(({ span }) => {
+        fallTL.to(span, {
+          y: gsap.utils.random(40, 160),
+          x: gsap.utils.random(-10, 10),
+          rotation: gsap.utils.random(-20, 20),
+          opacity: 0,
+          ease: 'power2.in',
+          duration: gsap.utils.random(0.25, 0.7),
+        }, base + gsap.utils.random(0, 0.6));
+      });
+    });
+
+    /* Elevator media: the original image was dimmed to 0.3 while scrolling; now that it is a
+       scroll-scrubbed VIDEO we keep it fully visible so the playback reads. (Fade removed.) */
+
+    /* Elevator VIDEO scrubbed by scroll: currentTime is driven by the section's scroll
+       progress (top-bottom → bottom-top), so the clip plays as you scroll through. */
+    const elevatorVid = section.querySelector('video.img-ascenseur');
+    if (elevatorVid) {
+      elevatorVid.pause();
+      const scrubVideo = () => {
+        gsap.to(elevatorVid, {
+          currentTime: elevatorVid.duration || 0,
+          ease: 'none',
+          scrollTrigger: { trigger: section, start: 'top bottom', end: 'bottom top', scrub: 1 },
+        });
+        ScrollTrigger.refresh();
+      };
+      if (elevatorVid.readyState >= 1) scrubVideo();
+      else elevatorVid.addEventListener('loadedmetadata', scrubVideo, { once: true });
+    }
+
+    /* merguez + ballon block parallax. */
+    const imgGlitchW = section.querySelector('.img-glitch-w');
+    if (imgGlitchW) {
+      const [m, b] = [...imgGlitchW.children];
+      if (m) gsap.fromTo(m, { y: 100 }, { y: -300, ease: 'none',
+        scrollTrigger: { trigger: section, start: 'top top', end: 'bottom top', scrub: 1.5 } });
+      if (b) gsap.fromTo(b, { y: 100 }, { y: -800, ease: 'none',
+        scrollTrigger: { trigger: section, start: 'top top', end: 'bottom top', scrub: 3 } });
+    }
+
+    /* Inner-image parallax inside merguez / ballon frames. */
+    [
+      { wrap: '.merguez', img: '.merguez-img', yPct: -8 },
+      { wrap: '.ballon',  img: '.ballon-img',  yPct: 10 },
+    ].forEach(({ wrap, img, yPct }) => {
+      const W = section.querySelector(wrap), I = section.querySelector(img);
+      if (!W || !I) return;
+      gsap.set(W, { overflow: 'hidden' });
+      gsap.set(I, { height: '110%', width: '100%', objectFit: 'cover', top: 0 });
+      gsap.fromTo(I, { yPercent: 0 }, { yPercent: yPct, ease: 'none',
+        scrollTrigger: { trigger: section, start: '20% top', end: 'bottom top', scrub: 3 } });
+    });
+  });
+}
+
+setupGlitch();
+ScrollTrigger.refresh();
+
+/* Hero title word-reveal — same look as the gallery heading (each word rises from
+   under a clip, staggered). Preserves the <br> line breaks and the first-line text-indent. */
+(function revealHeroTitle() {
+  const el = document.querySelector('.lf-title');
+  if (!el || !window.gsap) return;
+  const inners = [];
+  const out = document.createDocumentFragment();
+  el.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const words = node.textContent.split(/\s+/).filter((w) => w.length);
+      words.forEach((w, i) => {
+        const wrap = document.createElement('span');
+        // text-indent:0 — the title's 170px first-line indent inherits into inline-blocks and
+        // would blow up each word's width, breaking the layout; neutralize it inside the words.
+        // padding-bottom (+ negative margin to keep line spacing) gives the overflow-clip box
+        // room for descenders (g, y, p) so they aren't cropped; text-indent:0 stops the title's
+        // 170px indent from inheriting into the word and blowing up its width.
+        wrap.style.cssText = 'display:inline-block;overflow:hidden;vertical-align:bottom;text-indent:0;padding-bottom:.18em;margin-bottom:-.18em;';
+        const inner = document.createElement('span');
+        inner.style.cssText = 'display:inline-block;text-indent:0;';
+        inner.textContent = w;
+        wrap.appendChild(inner);
+        out.appendChild(wrap);
+        out.appendChild(document.createTextNode(' '));
+        inners.push(inner);
+      });
+    } else {
+      out.appendChild(node.cloneNode(true)); // keep <br> (line breaks) intact
+    }
+  });
+  el.innerHTML = '';
+  el.appendChild(out);
+  gsap.set(inners, { yPercent: 130 });
+  gsap.to(inners, { yPercent: 0, duration: 1.2, ease: 'power4.out', stagger: 0.08, delay: 0.15 });
+})();
+</script>
+
+<!-- ── Header logo: scroll-spin WebGL logo ──
+     Runs in the 40×40 header slot instead of a fixed bottom-center overlay, and reuses the
+     glitch section's existing Lenis (window.lenis) + global GSAP so there's only one scroll engine. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+const gsap = window.gsap;          // reuse the UMD gsap already loaded above
+const lenis = window.lenis;        // reuse the glitch section's Lenis instance
+
+/* CONFIG — values ported 1:1 from the source entry bundle. */
+const CONFIG = {
+  logoUrl: 'https://qclay.design/lovable/nothin/logo.glb', envUrl: 'https://qclay.design/lovable/nothin/env.webp',
+  fitSize: 2.7,               // normalize model so its max dimension ≈ this many world units
+  envIntensity: 1.4,          // chrome reflections strength
+  camFov: 55, camZ: 3.5, baseTiltX: 0.233,
+  rotSpeed: 0.002, lerpTop: 0.1, lerpBottom: 0.4, lerpSnap: 0.1,
+  mouseAmp: 0.25, mouseLerp: 0.15,
+  threeDThreshold: 0.03,
+  colors: { d2: '#CFCFCF', d3: '#EEECEA' }, // idle / active logo tint (light — reads on the black header)
+};
+
+/* frame-rate-independent damp, 1:1 from the bundle (Ur). */
+const damp = (n, e, t, dt) => { const k = 1 - Math.exp(-t * 0.05 * dt); return n * (1 - k) + e * k; };
+
+const canvas = document.getElementById('lf-logo-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(CONFIG.camFov, 1, 0.1, 100);
+camera.position.set(0, 0, CONFIG.camZ);
+camera.lookAt(0, 0, 0);
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+/* square canvas sized to its 40×40 CSS box (camera aspect = 1). */
+function resize() {
+  const w = canvas.clientWidth || 40, h = canvas.clientHeight || 40;
+  renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio, 1), 2));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+const logo = {
+  base: new THREE.Group(), top: null, bottom: null, ready: false,
+  scrollValue: 0, target: 0, rotA: 0, rotB: 0,
+  velocity: 0, direction: 1, isScrolling: false, progress: 0,
+  state: null, mouseFactor: 0, mouseInfluence: 0, mouseRotY: 0,
+};
+logo.base.rotation.x = CONFIG.baseTiltX;
+logo.base.scale.set(0, 0, 0);
+scene.add(logo.base);
+
+const texLoader = new THREE.TextureLoader();
+const gltfLoader = new GLTFLoader();
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+gltfLoader.setDRACOLoader(draco);
+
+/* Environment (equirect → PMREM) for correct PBR / chrome reflections. */
+let envMap = null;
+const pmrem = new THREE.PMREMGenerator(renderer);
+texLoader.load(CONFIG.envUrl, (tex) => {
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  envMap = pmrem.fromEquirectangular(tex).texture;
+  scene.environment = envMap;
+  if (logo.mat) { logo.mat.envMap = envMap; logo.mat.needsUpdate = true; }
+  tex.dispose();
+});
+
+/* Split an indexed/non-indexed geometry into top/bottom halves by triangle-centroid Y
+   (both halves keep the SAME origin so they spin around one shared vertical axis — as in
+   the source effect, where top/bottom desync while scrolling then snap back together). */
+function splitByY(geo) {
+  const pos = geo.attributes.position, idx = geo.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  const topI = [], botI = [];
+  for (let t = 0; t < triCount; t++) {
+    const a = idx ? idx.getX(t * 3)     : t * 3;
+    const b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    const y = (pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3;
+    (y >= 0 ? topI : botI).push(a, b, c);
+  }
+  const mk = (arr) => { const g = geo.clone(); g.setIndex(arr); return g; };
+  return { topGeo: mk(topI), botGeo: mk(botI) };
+}
+
+gltfLoader.load(CONFIG.logoUrl, (gltf) => {
+  // named top/bottom halves? use them; otherwise split the merged mesh.
+  let named = { top: null, bottom: null };
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const n = (o.name || '').toLowerCase();
+    if (n === 'top') named.top = o;
+    if (n === 'bottom') named.bottom = o;
+  });
+
+  // material: reuse the model's own (chrome) material + env reflections.
+  let src = null; gltf.scene.traverse((o) => { if (o.isMesh && !src) src = o; });
+  const mat = src.material;
+  mat.envMap = envMap;               // may be null until env loads; scene.environment covers it too
+  mat.envMapIntensity = CONFIG.envIntensity;
+  mat.color = new THREE.Color(CONFIG.colors.d3);
+  mat.needsUpdate = true;
+  logo.mat = mat;
+
+  if (named.top && named.bottom) {
+    logo.top = named.top; logo.bottom = named.bottom;
+    logo.top.material = mat; logo.bottom.material = mat;
+  } else {
+    // center + normalize the merged geometry, then cut into halves.
+    const geo = src.geometry.clone();
+    geo.computeBoundingBox();
+    const c = new THREE.Vector3(), size = new THREE.Vector3();
+    geo.boundingBox.getCenter(c); geo.boundingBox.getSize(size);
+    const s = CONFIG.fitSize / Math.max(size.x, size.y, size.z);
+    geo.translate(-c.x, -c.y, -c.z);
+    geo.scale(s, s, s);
+    geo.rotateX(Math.PI);   // logotype-s.glb is authored upside-down — flip it upright
+    const { topGeo, botGeo } = splitByY(geo);
+    logo.top = new THREE.Mesh(topGeo, mat);
+    logo.bottom = new THREE.Mesh(botGeo, mat);
+  }
+
+  logo.base.add(logo.top, logo.bottom);
+  logo.ready = true;
+  onEnter();
+});
+
+/* NB: this logo is a chrome/metal mesh (no baked map), so the original 2D flatten
+   (scale.z→0) makes it read as black. We keep full depth in both states so the chrome
+   stays visible; the scroll-spin, snap and mouse-tilt of the effect are unchanged. */
+function onEnter() { gsap.to(logo.base.scale, { x: 1, y: 1, z: 1, duration: 1.25, ease: 'expo.out' }); }
+function set3D() {
+  if (logo.state === '3D') return;
+  logo.state = '3D'; logo.mouseFactor = 1;
+  gsap.to(logo, { mouseInfluence: 1, duration: 1, ease: 'expo.out' });
+  gsap.to(logo.base.scale, { z: 1, duration: 1, ease: 'elastic.out(2, 0.7)' });
+  tintTo(CONFIG.colors.d3);
+}
+function set2D() {
+  if (logo.state === '2D') return;
+  logo.state = '2D'; logo.mouseFactor = 0;
+  gsap.to(logo, { mouseInfluence: 0, duration: 1, ease: 'expo.out' });
+  gsap.to(logo.base.scale, { z: 1, duration: 0.75, ease: 'expo.out' });
+  tintTo(CONFIG.colors.d2);
+}
+function tintTo(hex) {
+  if (!logo.top) return;
+  const c = new THREE.Color(hex);
+  gsap.to(logo.top.material.color, { r: c.r, g: c.g, b: c.b, duration: 0.3, ease: 'expo.out' });
+}
+
+/* The source effect snaps to multiples of PI (half turns). Its mark is mirror-symmetric, so a half turn
+   lands on an identical-looking pose. This monogram is not: at odd multiples of PI it rests
+   back-to-front (a mirrored "LE"). Snap to full turns instead so every resting pose faces the
+   viewer. The free scroll spin, the top/bottom desync and the snap itself are untouched. */
+const TURN = Math.PI * 2;
+
+function handleRotation(dt) {
+  logo.scrollValue += logo.velocity * CONFIG.rotSpeed * logo.mouseFactor;
+  let snap;
+  if (logo.direction === 1) {
+    snap = logo.mouseFactor ? Math.ceil(logo.scrollValue / TURN) * TURN
+                            : Math.round(logo.scrollValue / TURN) * TURN;
+  } else {
+    snap = Math.floor(logo.scrollValue / TURN) * TURN;
+  }
+  if (logo.isScrolling && logo.state === '3D') {
+    logo.target = logo.scrollValue;
+  } else {
+    logo.target = damp(logo.target, snap, CONFIG.lerpSnap, dt);
+    logo.scrollValue = damp(logo.scrollValue, snap, CONFIG.lerpSnap, dt);
+  }
+  logo.rotA = damp(logo.rotA, logo.target, CONFIG.lerpTop, dt);
+  logo.rotB = damp(logo.rotB, logo.target, CONFIG.lerpBottom, dt);
+  if (logo.top)    logo.top.rotation.y = logo.rotA;
+  if (logo.bottom) logo.bottom.rotation.y = logo.rotB;
+}
+
+/* reuse the glitch section's Lenis — no second scroll engine, no extra raf. */
+if (lenis) lenis.on('scroll', (e) => {
+  logo.velocity = e.velocity; logo.direction = e.direction || 1;
+  logo.isScrolling = e.isScrolling; logo.progress = e.progress;
+});
+
+const pointer = { x: 0 };
+window.addEventListener('pointermove', (ev) => { pointer.x = (ev.clientX / window.innerWidth) * 2 - 1; });
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(now - last, 50); last = now;   // Lenis.raf is driven by the glitch gsap.ticker
+  if (logo.ready) {
+    handleRotation(dt);
+    (logo.progress > CONFIG.threeDThreshold) ? set3D() : set2D();
+    logo.mouseRotY = pointer.x * CONFIG.mouseAmp;
+    logo.base.rotation.y = damp(logo.base.rotation.y, logo.mouseRotY, CONFIG.mouseLerp, dt) * logo.mouseInfluence;
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+
+<!-- ══ Site menu (self-contained) — opened via window.lafysMenu.toggle() from the header MENU button ══ -->
+<!-- Desktop menu. Host calls window.lafysMenu.toggle() (also .open()/.close()) from its own header button. -->
+<!-- Optional: give the host's hamburger button data-tm-hamburger and it will morph 2 lines -> X in sync. -->
+
+<style>
+  /* ================= SITE MENU — strictly scoped under .tm-root, all classes tm- ================= */
+  .tm-root, .tm-root * { box-sizing: border-box; }
+
+  .tm-root {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 16px;                       /* wrapper p-4 */
+    pointer-events: none;                /* page stays interactive while closed */
+    /* system-ui / Inter Tight-ish stack — no CDN fonts */
+    font-family: "Inter Tight", "InterTight", ui-sans-serif, system-ui, -apple-system,
+                 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #434343;                      /* --color-dark-font */
+    font-weight: 400;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    visibility: hidden;                  /* gsap autoAlpha takes over on open */
+  }
+  .tm-root.tm-open { pointer-events: auto; }
+
+  .tm-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(0,0,0,0.4);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    border: 0;
+  }
+  .tm-root.tm-open .tm-backdrop { pointer-events: auto; }
+
+  .tm-panel {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 440px;                    /* max-w-110 = 27.5rem */
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #fff;
+    color: #434343;
+    border: 1px solid #e6e4e2;           /* border-cream */
+    border-radius: 0;                    /* sharp corners (no rounding) */
+    padding: 80px 32px 40px;             /* pt-20 pb-10 px-8 */
+    pointer-events: auto;
+    opacity: 0;
+    visibility: hidden;
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.25);
+  }
+
+  .tm-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    width: 100%;
+    justify-content: space-between;
+    gap: 80px;                           /* gap-20 */
+  }
+
+  .tm-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;                            /* gap-2 */
+    width: 100%;
+  }
+  .tm-menu-item { width: 100%; }
+  .tm-menu-item > a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* char-hover primitive (two text layers) */
+  .tm-nav-link {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+    line-height: 1;
+    overflow: visible;
+    user-select: none;
+    color: inherit;
+  }
+  .tm-text-layer { display: inline-flex; }
+  .tm-text-layer.tm-clone {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .tm-char {
+    display: inline-block;
+    white-space: pre;
+    will-change: transform, opacity, filter;
+  }
+
+  /* big menu labels — .h3 */
+  .tm-menu-item .tm-nav-link {
+    font-size: clamp(28px, 3vw, 44px);
+    letter-spacing: -0.04em;
+    font-weight: 500;
+  }
+
+  /* hover arrow — fades + slides in (opacity 0->1, translateX 0->8px, 300ms, delay 300ms) */
+  .tm-arrow {
+    display: inline-flex;
+    align-items: flex-start;
+    padding-top: 6px;
+    color: currentColor;
+    opacity: 0;
+    transform: translateX(0);
+    transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+    transition-delay: 300ms;
+    will-change: transform, opacity;
+  }
+  .tm-menu-item > a:hover .tm-arrow {
+    opacity: 1;
+    transform: translateX(8px);
+  }
+  .tm-arrow svg { width: 10px; height: 10px; display: block; }
+
+  /* ---- footer / bottom-stagger ---- */
+  .tm-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 56px;                           /* gap-14 */
+    flex: 1;                             /* fill the panel so social can drop to the bottom */
+  }
+  .tm-footer > :last-child { margin-top: auto; }  /* push Social to the very bottom */
+  .tm-fgroup {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;                           /* gap-4 */
+  }
+  .tm-title {
+    text-transform: uppercase;
+    font-size: 17px;                     /* text-lg */
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: rgba(67,67,67,0.5);           /* dark-font/50 */
+  }
+  .tm-contact { display: flex; flex-direction: column; gap: 8px; }
+  .tm-row { display: flex; gap: 8px; margin: 0; align-items: baseline; }
+  .tm-key {
+    width: 24px;                         /* w-6 */
+    text-transform: uppercase;
+    color: rgba(67,67,67,0.5);
+    font-size: 15px;
+    flex: 0 0 auto;
+  }
+  .tm-row a, .tm-social a {
+    color: #434343;
+    text-decoration: none;
+    position: relative;
+    z-index: 3;
+    display: inline-block;
+  }
+  .tm-row .tm-nav-link { font-size: 15px; }
+
+  .tm-social {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;                    /* gap-x-6 */
+    row-gap: 4px;                        /* gap-y-1 */
+    width: 100%;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .tm-social p { margin: 0; }
+  .tm-social .tm-nav-link { font-size: 14px; }
+
+  .tm-story-wrap { width: 100%; }
+  .tm-story {
+    display: inline-block;
+    text-decoration: none;
+    color: #434343;
+    text-transform: uppercase;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    padding: 6px 16px 8px;
+    border: 1px solid #d8d8d8;           /* border-light-font */
+    border-radius: 9999px;
+    transition: border-color 300ms ease;
+    position: relative;
+    z-index: 3;
+  }
+  .tm-story:hover { border-color: #434343; }
+
+  .tm-panel::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+
+<div class="tm-root" id="tm-root">
+  <button type="button" class="tm-backdrop" id="tm-backdrop" aria-label="Close menu" tabindex="-1"></button>
+
+  <div class="tm-panel" id="tm-panel">
+    <button type="button" class="tm-close" aria-label="Close menu" onclick="window.lafysMenu&&window.lafysMenu.close()">
+      <span>Close</span>
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <div class="tm-inner">
+
+      <ul class="tm-menu">
+        <li class="tm-menu-item">
+          <a href="/work" class="tm-group">
+            <span class="tm-nav-link" data-text="Work"></span>
+            <span class="tm-arrow" aria-hidden="true"><svg width="10" height="9" viewBox="0 0 10 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.47372 8.652V6.552L8.32972 3.752V4.9L5.47372 2.1V-3.09944e-06L9.32372 3.836V4.816L5.47372 8.652ZM-0.000281237 5.11V3.542H8.60972V5.11H-0.000281237Z" fill="currentColor"></path></svg></span>
+          </a>
+        </li>
+        <li class="tm-menu-item">
+          <a href="/services" class="tm-group">
+            <span class="tm-nav-link" data-text="Examples"></span>
+            <span class="tm-arrow" aria-hidden="true"><svg width="10" height="9" viewBox="0 0 10 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.47372 8.652V6.552L8.32972 3.752V4.9L5.47372 2.1V-3.09944e-06L9.32372 3.836V4.816L5.47372 8.652ZM-0.000281237 5.11V3.542H8.60972V5.11H-0.000281237Z" fill="currentColor"></path></svg></span>
+          </a>
+        </li>
+        <li class="tm-menu-item">
+          <a href="/about" class="tm-group">
+            <span class="tm-nav-link" data-text="About"></span>
+            <span class="tm-arrow" aria-hidden="true"><svg width="10" height="9" viewBox="0 0 10 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.47372 8.652V6.552L8.32972 3.752V4.9L5.47372 2.1V-3.09944e-06L9.32372 3.836V4.816L5.47372 8.652ZM-0.000281237 5.11V3.542H8.60972V5.11H-0.000281237Z" fill="currentColor"></path></svg></span>
+          </a>
+        </li>
+        <li class="tm-menu-item">
+          <a href="/contact" class="tm-group">
+            <span class="tm-nav-link" data-text="Pricing"></span>
+            <span class="tm-arrow" aria-hidden="true"><svg width="10" height="9" viewBox="0 0 10 9" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.47372 8.652V6.552L8.32972 3.752V4.9L5.47372 2.1V-3.09944e-06L9.32372 3.836V4.816L5.47372 8.652ZM-0.000281237 5.11V3.542H8.60972V5.11H-0.000281237Z" fill="currentColor"></path></svg></span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="tm-footer">
+        <div class="tm-fgroup">
+          <span class="tm-title tm-bottom">Business Enquiry</span>
+          <div class="tm-contact">
+            <p class="tm-row tm-bottom"><span class="tm-key">E.</span><a class="tm-group" href="mailto:info@lafys.com"><span class="tm-nav-link" data-text="info@lafys.com"></span></a></p>
+            <p class="tm-row tm-bottom"><span class="tm-key">P.</span><a class="tm-group" href="tel:+14155550199"><span class="tm-nav-link" data-text="+1 415 555 0199"></span></a></p>
+          </div>
+        </div>
+
+        <div class="tm-fgroup">
+          <span class="tm-title tm-bottom">Social</span>
+          <div class="tm-social">
+            <p class="tm-bottom"><a class="tm-group" target="_blank" rel="noopener" href="#"><span class="tm-nav-link" data-text="Linkedin"></span></a></p>
+            <p class="tm-bottom"><a class="tm-group" target="_blank" rel="noopener" href="#"><span class="tm-nav-link" data-text="Facebook"></span></a></p>
+            <p class="tm-bottom"><a class="tm-group" target="_blank" rel="noopener" href="#"><span class="tm-nav-link" data-text="Dribbble"></span></a></p>
+            <p class="tm-bottom"><a class="tm-group" target="_blank" rel="noopener" href="#"><span class="tm-nav-link" data-text="Instagram"></span></a></p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var gsap = window.gsap;
+  var root    = document.getElementById("tm-root");
+  var panel   = document.getElementById("tm-panel");
+  var backdrop= document.getElementById("tm-backdrop");
+  if (!root || !panel) return;
+
+  /* ---------- build the two-layer char structure for every .tm-nav-link ---------- */
+  function buildChars(text) {
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < text.length; i++) {
+      var s = document.createElement("span");
+      s.className = "tm-char";
+      s.textContent = text[i] === " " ? " " : text[i];
+      frag.appendChild(s);
+    }
+    return frag;
+  }
+  var links = root.querySelectorAll(".tm-nav-link");
+  links.forEach(function (link) {
+    var text = link.getAttribute("data-text") || link.textContent || "";
+    link.textContent = "";
+    var original = document.createElement("span");
+    original.className = "tm-text-layer tm-original";
+    original.appendChild(buildChars(text));
+    var clone = document.createElement("span");
+    clone.className = "tm-text-layer tm-clone";
+    clone.appendChild(buildChars(text));
+    link.appendChild(original);
+    link.appendChild(clone);
+  });
+
+  if (!gsap) {
+    console.warn("[lafysMenu] window.gsap not found — menu animations disabled.");
+  }
+
+  /* ---------- char hover (original chars fly out + blur, clone chars fade in, staggered) ---------- */
+  if (gsap) {
+    links.forEach(function (link) {
+      var original = link.querySelector(".tm-original");
+      var clone    = link.querySelector(".tm-clone");
+      if (!original || !clone) return;
+      var oChars = original.querySelectorAll(".tm-char");
+      var cChars = clone.querySelectorAll(".tm-char");
+      var active = null;
+
+      function reset() {
+        gsap.set(original, { opacity: 1 });
+        gsap.set(oChars, { y: 0, opacity: 1, filter: "blur(0px)" });
+        gsap.set(clone, { opacity: 0 });
+        gsap.set(cChars, { opacity: 0, y: 0, filter: "blur(0px)" });
+      }
+      function enter() {
+        if (active) { active.kill(); active = null; }
+        reset();
+        var tl = gsap.timeline({ onComplete: function () { active = null; reset(); } });
+        active = tl;
+        tl.set(clone, { opacity: 1 });
+        tl.set(cChars, { opacity: 0, y: 0, filter: "blur(0px)" });
+        tl.to(oChars, {
+          y: function (i) { return i % 2 === 0 ? -10 : 10; },
+          opacity: 0,
+          filter: "blur(5px)",
+          duration: 0.3,
+          stagger: 0.025,
+          ease: "power2.in"
+        });
+        tl.to(cChars, {
+          opacity: 1,
+          duration: 0.4,
+          stagger: 0.04,
+          ease: "power2.out"
+        }, "-=0.02");
+      }
+      var trigger = link.closest(".tm-group") || link;
+      trigger.addEventListener("mouseenter", enter);
+    });
+  }
+
+  /* ---------- optional hamburger morph (host may add data-tm-hamburger to its own button) ---------- */
+  var hamTl = null;
+  function buildHamburger() {
+    if (!gsap || hamTl) return hamTl;
+    var host = document.querySelector("[data-tm-hamburger]");
+    if (!host) return null;
+    var svg = host.querySelector("svg");
+    if (!svg) return null;
+    var paths = svg.querySelectorAll("path");
+    if (paths.length < 4) return null;
+    var line1 = paths[0], line2 = paths[1], x1 = paths[2], x2 = paths[3];
+    [line1, line2, x1, x2].forEach(function (p) {
+      var len = p.getTotalLength();
+      gsap.set(p, { strokeDasharray: len });
+    });
+    gsap.set([line1, line2], { strokeDashoffset: 0 });
+    [x1, x2].forEach(function (p) { gsap.set(p, { strokeDashoffset: p.getTotalLength(), opacity: 0 }); });
+
+    hamTl = gsap.timeline({ paused: true })
+      .to(line1, { duration: 0.3, strokeDashoffset: function (i, t) { return t.getTotalLength(); }, ease: "power2.inOut" }, 0)
+      .to(line2, { duration: 0.3, strokeDashoffset: function (i, t) { return t.getTotalLength(); }, ease: "power2.inOut" }, 0.05)
+      .set([x1, x2], { opacity: 1 }, 0.2)
+      .to(x1, { duration: 0.3, strokeDashoffset: 0, ease: "power2.out" }, 0.2)
+      .to(x2, { duration: 0.3, strokeDashoffset: 0, ease: "power2.out" }, 0.25);
+    return hamTl;
+  }
+  function morphHamburger(open) {
+    var tl = buildHamburger();
+    if (!tl) return;
+    if (open) tl.timeScale(1).play();
+    else tl.timeScale(1.5).reverse();
+  }
+
+  /* ---------- open / close timeline (built once, paused) ---------- */
+  var openTl = null;
+  if (gsap) {
+    openTl = gsap.timeline({ paused: true })
+      .to(root, { autoAlpha: 1, duration: 0 }, 0)                                   /* wrapper visible instantly */
+      .to(backdrop, { autoAlpha: 1, duration: 0.6, ease: "power2.out" }, 0)         /* added backdrop */
+      .fromTo(panel,
+        { clipPath: "circle(0% at 95% 5%)", scale: 0.9, rotation: 2, autoAlpha: 0 },
+        { clipPath: "circle(150% at 0% 5%)", scale: 1, rotation: 0, autoAlpha: 1, duration: 1.2, ease: "expo.inOut" },
+        0)
+      .fromTo(root.querySelectorAll(".tm-menu-item"),
+        { y: 20, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.1, ease: "power2.out" },
+        "<0.6")
+      .fromTo(root.querySelectorAll(".tm-bottom"),
+        { y: 20, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.08, ease: "power2.out" },
+        "<0.6");
+  }
+
+  /* ---------- state / API ---------- */
+  var isOpen = false;
+  var prevOverflow = "";
+
+  function open() {
+    if (isOpen) return;
+    isOpen = true;
+    root.classList.add("tm-open");
+    if (window.lenis && typeof window.lenis.stop === "function") window.lenis.stop();
+    prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    if (openTl) openTl.timeScale(1).play();
+    else { root.style.visibility = "visible"; }   /* graceful no-gsap fallback */
+    morphHamburger(true);
+  }
+  function close() {
+    if (!isOpen) return;
+    isOpen = false;
+    root.classList.remove("tm-open");
+    if (window.lenis && typeof window.lenis.start === "function") window.lenis.start();
+    document.body.style.overflow = prevOverflow || "";
+    if (openTl) openTl.timeScale(1.75).reverse();
+    else { root.style.visibility = "hidden"; }
+    morphHamburger(false);
+  }
+  function toggle() { isOpen ? close() : open(); }
+
+  /* backdrop click + Escape + menu-link click close */
+  backdrop.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isOpen) close();
+  });
+  root.querySelectorAll(".tm-menu-item > a, .tm-story").forEach(function (a) {
+    a.addEventListener("click", function () { close(); });
+  });
+
+  window.lafysMenu = { open: open, close: close, toggle: toggle };
+})();
+</script>
+
+
+<!-- ══ Gallery + footer init (reuses host GSAP/ScrollTrigger/Lenis; no lib reload) ══ -->
+<script>
+
+    (function () {
+      gsap.registerPlugin(ScrollTrigger);
+
+      const winW = window.innerWidth;
+      const isMobileInit = winW <= 768;
+
+      // requestIdleCallback fallback (как в исходнике)
+      var _ric = typeof requestIdleCallback === 'function' ? requestIdleCallback : function (cb) { setTimeout(cb, 200); };
+
+      // Лениво стартуем блок, когда цель близко ко вьюпорту (verbatim из исходника)
+      function runWhenNear(target, callback, rootMargin = '1600px 0px') {
+        let didRun = false;
+        const run = () => { if (didRun) return; didRun = true; callback(); };
+        if (!target || !('IntersectionObserver' in window)) { _ric(run); return; }
+        const observer = new IntersectionObserver((entries) => {
+          if (!entries.some(entry => entry.isIntersecting)) return;
+          observer.disconnect();
+          _ric(run);
+        }, { rootMargin });
+        observer.observe(target);
+      }
+
+      /* =========================================================
+         1) МАСКА-РЕВИЛ ТЕКСТА (как появляется заголовок)
+         data-reveal="word"  → пословный въезд снизу из-под клипа
+         data-reveal="fade"  → мягкое проявление + сдвиг по Y
+         ========================================================= */
+      runWhenNear(document.querySelector('.gallery-header'), function () {
+        _ric(function () {
+          (function initMaskedReveal() {
+            document.querySelectorAll('[data-reveal]').forEach(function (el) {
+              var type = el.dataset.reveal || 'line';
+              var delay = parseFloat(el.dataset.revealDelay || 0);
+              var stagger = parseFloat(el.dataset.revealStagger || 0.08);
+              var targets = [];
+
+              if (type === 'word' || type === 'line') {
+                var text = el.innerText.trim();
+                var words = text.split(/\s+/);
+                el.innerHTML = '';
+                words.forEach(function (w, i) {
+                  var wrap = document.createElement('span');
+                  wrap.style.cssText = 'display:inline-block;overflow:clip;vertical-align:bottom;';
+                  var inner = document.createElement('span');
+                  inner.style.cssText = 'display:inline-block;';
+                  inner.textContent = w + (i < words.length - 1 ? ' ' : '');
+                  wrap.appendChild(inner);
+                  el.appendChild(wrap);
+                  targets.push(inner);
+                });
+              } else {
+                // Same reasoning as the word branch below: arm the trigger unconditionally
+                // instead of snapping to the end state when this lazy init runs late.
+                gsap.set(el, { autoAlpha: 0, y: 28 });
+                gsap.to(el, {
+                  autoAlpha: 1, y: 0, duration: 1.1, ease: 'power3.out',
+                  delay: delay,
+                  scrollTrigger: { trigger: el, start: 'top 85%', once: true }
+                });
+                return;
+              }
+
+              // The heading is position:sticky and pulled up -70vh, so a ScrollTrigger on the
+              // heading itself evaluates as "already started" at load and the reveal fires
+              // instantly (off-screen) — the user then never sees it. Trigger off the NON-sticky
+              // gallery SECTION instead, so it fires only when the user actually scrolls to it.
+              var titleEl = el.closest ? el.closest('.gallery-header-title') : null;
+              var section = el.closest ? el.closest('.s3-gallery-section') : null;
+              var showTitle = function(){ if (titleEl) titleEl.style.opacity = '1'; };
+
+              // Always arm the ScrollTrigger — never snap the words visible by hand. This init is
+              // lazy (IntersectionObserver + requestIdleCallback), so on a slow load or a fast
+              // flick it can run when the section is ALREADY on screen. A "past the start point,
+              // just show it" shortcut here meant no ScrollTrigger was ever created and the reveal
+              // could never play, not even after scrolling back up. ScrollTrigger already handles
+              // the past-the-start case: it fires onEnter as soon as it is created.
+              gsap.set(targets, { yPercent: 130 });
+              showTitle();
+              gsap.to(targets, {
+                yPercent: 0,
+                duration: 1.2,
+                ease: 'power4.out',
+                stagger: stagger,
+                delay: delay,
+                scrollTrigger: { trigger: section || el, start: 'top 30%', once: true }
+              });
+            });
+          })();
+        });
+      }, '1800px 0px');
+
+      /* =========================================================
+         2) РЕТ-АНИМАЦИЯ ЗАГОЛОВКА (текст уезжает вверх, пока
+         последние карточки уходят из вью) — scrub-таймлайн
+         ========================================================= */
+      runWhenNear(document.querySelector('.gallery-header'), function () {
+        _ric(function () {
+          (function initGalleryHeader() {
+            const header = document.querySelector('.gallery-header');
+            if (!header) return;
+            const lastItem = document.querySelector('.pg-item-6') || document.querySelector('.pg-item-5');
+            if (!lastItem) return;
+
+            const textLastItem = document.querySelector('.pg-item-5') || lastItem;
+            let wordSpans = header.querySelectorAll('.gh-line span span');
+            if (!wordSpans.length) wordSpans = header.querySelectorAll('.gh-line');
+            const label = header.querySelector('.gallery-header-label');
+            const sub = header.querySelector('.gallery-header-sub');
+
+            const exitTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: textLastItem,
+                start: 'bottom 65%',
+                end: 'bottom 5%',
+                scrub: 1.2,
+              }
+            });
+
+            if (wordSpans.length) {
+              exitTl.to(wordSpans, { yPercent: -130, ease: 'power2.in', stagger: { each: 0.04, from: 'start' } }, 0);
+            }
+            if (label) exitTl.to(label, { autoAlpha: 0, y: -15, ease: 'power2.in' }, 0);
+            if (sub) exitTl.to(sub, { autoAlpha: 0, y: -15, ease: 'power2.in' }, 0.05);
+          })();
+        });
+      }, '1800px 0px');
+
+      /* =========================================================
+         3) КАРТОЧКИ: маска-въезд снизу (clip-path) + масштаб +
+         вертикальный параллакс картинки при скролле
+         ========================================================= */
+      runWhenNear(document.querySelector('.pg-gallery') || document.querySelector('.gallery-header'), function () {
+        setTimeout(function initPgItems() {
+          if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+          document.documentElement.classList.add('pg-anim-ready');
+
+          document.querySelectorAll('.pg-item').forEach((item, i) => {
+            const wrap = item.querySelector('.pg-img-wrap');
+            const media = item.querySelector('.pg-img-wrap img') || item.querySelector('.pg-img-wrap video');
+            const isVideo = media && media.tagName === 'VIDEO';
+
+            // если элемент уже во вью (первый экран) — сразу финальное состояние, без маски
+            const rect = item.getBoundingClientRect();
+            const alreadyVisible = rect.top < window.innerHeight * 0.9;
+
+            if (wrap) gsap.set(wrap, { clipPath: alreadyVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)' });
+            if (media && !isVideo) gsap.set(media, { scale: alreadyVisible ? 0.9 : 1.3 });
+
+            const enterTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: item,
+                start: 'top 90%',
+                toggleActions: 'play none none reverse'
+              }
+            });
+
+            if (wrap) {
+              enterTl.to(wrap, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.7, ease: 'expo.out' }, 0);
+            }
+            if (media && !isVideo) {
+              enterTl.to(media, { scale: 1.0, duration: 1.0, ease: 'power3.out' }, 0);
+            }
+
+            if (media && !isVideo) {
+              const speed = [12, 18, 10, 20, 15, 22][i % 6];
+              gsap.fromTo(media,
+                { yPercent: -speed },
+                {
+                  yPercent: speed,
+                  ease: 'none',
+                  scrollTrigger: {
+                    trigger: item,
+                    start: 'top bottom',
+                    end: 'bottom top',
+                    scrub: 1.2
+                  }
+                }
+              );
+              if (!isMobileInit) {
+                item.addEventListener('mouseenter', () =>
+                  gsap.to(media, { scale: 1.0, duration: 0.8, ease: 'power2.out', overwrite: 'auto' })
+                );
+                item.addEventListener('mouseleave', () =>
+                  gsap.to(media, { scale: 1.0, duration: 1.2, ease: 'expo.out', overwrite: 'auto' })
+                );
+              }
+            }
+          });
+
+          if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.refresh();
+
+          // Watchdog: если карточка во вью, но осталась зажатой clip-path(100%) — форсим открыть
+          const pgRevealStuck = () => {
+            document.querySelectorAll('.pg-gallery .pg-item').forEach((item) => {
+              const wrap = item.querySelector('.pg-img-wrap');
+              if (!wrap) return;
+              const rect = item.getBoundingClientRect();
+              const inView = rect.top < window.innerHeight * 0.9 && rect.bottom > 0;
+              const clipped = (getComputedStyle(wrap).clipPath || '').indexOf('100%') !== -1;
+              if (inView && clipped) gsap.set(wrap, { clipPath: 'inset(0% 0% 0% 0%)' });
+            });
+          };
+          setTimeout(pgRevealStuck, 1500);
+          setTimeout(pgRevealStuck, 4000);
+          window.addEventListener('load', () => setTimeout(pgRevealStuck, 600), { once: true });
+        }, 0);
+      }, '2200px 0px');
+
+      /* =========================================================
+         4) ВЫХОД ГАЛЕРЕИ: вся сетка чуть тает вверх на скролле
+         ========================================================= */
+      runWhenNear(document.querySelector('.pg-gallery'), function () {
+        _ric(function () {
+          (function initGalleryExit() {
+            const pgGallery = document.querySelector('.pg-gallery');
+            if (!pgGallery) return;
+            gsap.to(pgGallery, {
+              opacity: 0,
+              y: -30,
+              ease: 'power2.in',
+              scrollTrigger: {
+                trigger: pgGallery,
+                start: 'bottom 55%',
+                end: 'bottom top',
+                scrub: 1.5,
+              }
+            });
+          })();
+        });
+      }, '1800px 0px');
+
+      /* =========================================================
+         5) ФУТЕР: линия-бордер (scaleX-wipe), пословный въезд
+         info-bar, clip-reveal описания, въезд email/телефона/
+         навигации, wipe-раскрытие превью, © с back.out + параллакс
+         ========================================================= */
+      runWhenNear(document.getElementById('site-footer'), function () {
+        _ric(function () {
+          (function initFooterReveal() {
+            const footer = document.getElementById('site-footer');
+            if (!footer) return;
+
+            const infoBar = footer.querySelector('.footer-info-bar');
+            const description = footer.querySelector('.footer-description');
+            const contactInfo = footer.querySelector('.footer-contact-info');
+            const webAdd = footer.querySelector('.web_add');
+            const navLinks = footer.querySelector('.footer-nav-links');
+            const thumb = footer.querySelector('.footer-video-thumb');
+            const cBridge = document.getElementById('footer-c-bridge');
+
+            // 1. Анимированная линия-бордер (вместо CSS border-top)
+            let infoLine = null;
+            if (infoBar) {
+              infoLine = document.createElement('div');
+              infoLine.className = 'footer-info-line';
+              infoBar.parentNode.insertBefore(infoLine, infoBar);
+              infoBar.style.borderTop = 'none';
+              gsap.set(infoLine, { scaleX: 0 });
+            }
+
+            // 2. Оборачиваем span info-bar для y-clip ревила
+            const rawSpans = infoBar ? [...infoBar.querySelectorAll('span')] : [];
+            const spanInners = rawSpans.map(span => {
+              const wrap = document.createElement('span');
+              wrap.className = 'frev-wrap';
+              const inner = document.createElement('span');
+              inner.style.display = 'inline-block';
+              inner.textContent = span.textContent;
+              span.textContent = '';
+              wrap.appendChild(inner);
+              span.appendChild(wrap);
+              return inner;
+            });
+            if (spanInners.length) gsap.set(spanInners, { y: '110%' });
+
+            // 3. Оборачиваем ссылки навигации
+            const navAnchors = navLinks ? [...navLinks.querySelectorAll('a')] : [];
+            navAnchors.forEach(a => {
+              const wrap = document.createElement('span');
+              wrap.className = 'frev-wrap';
+              a.parentNode.insertBefore(wrap, a);
+              wrap.appendChild(a);
+            });
+            if (navAnchors.length) gsap.set(navAnchors, { y: '120%' });
+
+            // 4. Оборачиваем email / телефон
+            const contactEmail = contactInfo ? contactInfo.querySelector('a') : null;
+            const contactPhone = contactInfo ? contactInfo.querySelector('span') : null;
+            if (contactEmail) {
+              const ew = document.createElement('div');
+              ew.style.overflow = 'hidden';
+              contactEmail.parentNode.insertBefore(ew, contactEmail);
+              ew.appendChild(contactEmail);
+              gsap.set(contactEmail, { y: '105%' });
+            }
+            if (contactPhone) {
+              const pw = document.createElement('div');
+              pw.style.cssText = 'overflow:hidden;display:block;';
+              contactPhone.parentNode.insertBefore(pw, contactPhone);
+              pw.appendChild(contactPhone);
+              gsap.set(contactPhone, { display: 'inline-block', y: '105%' });
+            }
+
+            // 5. Крышка-оверлей превью (wipe-раскрытие)
+            let videoCover = null;
+            if (thumb) {
+              videoCover = document.createElement('div');
+              videoCover.className = 'footer-video-cover';
+              thumb.appendChild(videoCover);
+            }
+
+            // ── Таймлайн входа
+            const tl = gsap.timeline({
+              scrollTrigger: { trigger: footer, start: 'top 82%' }
+            });
+
+            if (infoLine) tl.to(infoLine, { scaleX: 1, duration: 1.1, ease: 'power3.inOut' }, 0);
+            if (spanInners.length) tl.to(spanInners, { y: '0%', duration: 1.0, stagger: 0.1, ease: 'power4.out' }, 0.2);
+            if (description) {
+              tl.fromTo(description,
+                { clipPath: 'inset(0 0 100% 0)', y: 20 },
+                { clipPath: 'inset(0 0 0% 0)', y: 0, duration: 1.1, ease: 'power4.out' },
+                0.5
+              );
+            }
+            if (contactEmail) tl.to(contactEmail, { y: '0%', duration: 1.2, ease: 'power4.out' }, 0.68);
+            if (contactPhone) tl.to(contactPhone, { y: '0%', duration: 0.9, ease: 'power3.out' }, 0.85);
+            if (webAdd) tl.from(webAdd, { y: 14, opacity: 0, duration: 0.8, ease: 'power3.out' }, 0.95);
+            if (navAnchors.length) tl.to(navAnchors, { y: '0%', duration: 0.85, stagger: 0.07, ease: 'power4.out' }, 1.05);
+            if (videoCover) {
+              tl.fromTo(videoCover,
+                { scaleX: 1 },
+                { scaleX: 0, duration: 0.85, ease: 'power4.inOut', transformOrigin: 'right center' },
+                0.15
+              );
+            }
+            if (cBridge) tl.from(cBridge, { scale: 0, rotation: -20, duration: 1.1, ease: 'back.out(1.3)' }, 0.8);
+          })();
+        });
+      }, '2200px 0px');
+
+      // Пересчёт триггеров после загрузки ресурсов/шрифтов
+      window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => ScrollTrigger.refresh()).catch(() => { });
+      }
+
+      /* =========================================================
+         Плавный скролл Lenis (как на исходном сайте) — синхрон с ScrollTrigger.
+         На тач-устройствах используем нативный скролл.
+         ========================================================= */
+      /* Lenis reused from host page (window.lenis) — no second scroll engine */
+    })();
+  
+</script>
+
+<!-- ══ Header-link hover ══ -->
+<!--
+  Header-nav hover effect, ported 1:1.
+
+  ORIGINAL (Webflow IX2):
+    DOM: a.global-block-link (height:1rem; overflow:hidden)
+           > .globa-block-link-track (flex column)
+               > .global-nav-link  (copy 1)
+               > .global-nav-link  (copy 2, identical clone)
+    Trigger i-2f9aa434 (hover "each"):  mouseenter -> play,  mouseleave -> reverse
+    Timeline t-3fa2086d, target = .globa-block-link-track, splitText:{type:"chars"}:
+        wf:transform y: ["0%","-19px"]   (one line-height; reveals the clone)
+        duration 0.6, stagger {each:0.03}, ease 9
+    Webflow EASING_NAMES[9] === "power3.inOut"   (verified from webflow runtime chunk)
+
+  This port rebuilds the same idea generically: each character becomes its own
+  overflow-hidden mask holding the letter twice (original + clone) stacked, and on
+  hover every char's inner rolls up exactly one line-height with a 0.03 left-to-right
+  stagger. Uses window.gsap (play/reverse timeline == Webflow's play/reverse) when
+  present, else falls back to CSS transitions with per-char transition-delay.
+-->
+<style>
+  /* nav hover -- all classes prefixed dh- ; no global/body rules */
+  .dh-link{
+    display:inline-flex;
+    align-items:flex-start;
+    white-space:pre;            /* keep exact spacing of the label */
+    cursor:pointer;
+  }
+  .dh-char{
+    display:inline-block;
+    overflow:hidden;
+    height:1.2em;               /* ~ the 19px @16px line-height dash used */
+    line-height:1.2;
+    vertical-align:top;
+  }
+  .dh-char-inner{
+    display:block;
+    will-change:transform;
+  }
+  .dh-face{
+    display:block;
+    line-height:1.2;
+  }
+  /* CSS-only fallback (used when window.gsap is absent). Per-char delay is set
+     inline at build time so the stagger survives without JS driving each frame. */
+  .dh-link.dh-css .dh-char-inner{
+    transition:transform .6s cubic-bezier(.645,.045,.355,1); /* approx power3.inOut */
+  }
+  .dh-link.dh-css.dh-hover .dh-char-inner{
+    transform:translateY(-50%);
+  }
+</style>
+
+<script>
+(function(){
+  "use strict";
+  var DUR = 0.6, STAGGER = 0.03, EASE = "power3.inOut"; // source values
+
+  function buildChars(el){
+    var text = el.textContent;               // preserve label EXACTLY (counts/spaces)
+    el.textContent = "";
+    for(var i=0;i<text.length;i++){
+      var ch = text[i];
+      var display = (ch === " ") ? " " : ch; // keep width of spaces
+      var charEl = document.createElement("span");
+      charEl.className = "dh-char";
+      var inner = document.createElement("span");
+      inner.className = "dh-char-inner";
+      var f1 = document.createElement("span"); f1.className = "dh-face"; f1.textContent = display;
+      var f2 = document.createElement("span"); f2.className = "dh-face"; f2.textContent = display;
+      inner.appendChild(f1); inner.appendChild(f2);
+      charEl.appendChild(inner);
+      el.appendChild(charEl);
+    }
+    return el.querySelectorAll(".dh-char-inner");
+  }
+
+  function attachOne(el){
+    if(!el || el.getAttribute("data-dh-init") === "1") return; // idempotent
+    if(!el.textContent.length){ return; }
+    el.setAttribute("data-dh-init","1");
+    el.classList.add("dh-link");
+
+    var inners = buildChars(el);
+    var gsap = window.gsap;
+
+    if(gsap && typeof gsap.timeline === "function"){
+      var tl = gsap.timeline({paused:true});
+      tl.to(inners, {                 // roll up one line-height -> reveal clone
+        yPercent:-50,                 // inner holds 2 faces; -50% == 1 face == 1 line
+        duration:DUR,
+        ease:EASE,
+        stagger:STAGGER               // left-to-right, matches Webflow char split
+      });
+      el.addEventListener("mouseenter", function(){ tl.play(); });   // Webflow: play
+      el.addEventListener("mouseleave", function(){ tl.reverse(); });// Webflow: reverse
+    } else {
+      // Pure-CSS fallback: bake the stagger as per-char transition-delay.
+      el.classList.add("dh-css");
+      for(var i=0;i<inners.length;i++){
+        inners[i].style.transitionDelay = (i*STAGGER) + "s";
+      }
+      el.addEventListener("mouseenter", function(){ el.classList.add("dh-hover"); });
+      el.addEventListener("mouseleave", function(){ el.classList.remove("dh-hover"); });
+    }
+  }
+
+  function attach(selector){
+    try{
+      var nodes = (typeof selector === "string")
+        ? document.querySelectorAll(selector)
+        : selector;
+      if(!nodes) return;
+      if(nodes.nodeType) nodes = [nodes];
+      Array.prototype.forEach.call(nodes, attachOne);
+    }catch(e){ /* never throw */ }
+  }
+
+  window.dashHover = { attach: attach };
+})();
+</script>
+
+<!-- attach the hover roll to the header nav links -->
+<script>window.addEventListener('load',function(){ if(window.dashHover){ window.dashHover.attach('.lf-header .col span'); } });</script>
+
+<!-- ══ 3D copyright (chrome, same look as the header logo): idle continuous spin +
+     flick-to-spin with inertia proportional to the cursor flick velocity ══ -->
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const gsap = window.gsap;
+const canvas = document.getElementById('lf-copyright-canvas');
+if (canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha:true, antialias:true, powerPreference:'high-performance' });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  camera.position.set(0,0,3.5); camera.lookAt(0,0,0);
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+  function resize(){ const w=canvas.clientWidth||120, h=canvas.clientHeight||120;
+    renderer.setPixelRatio(Math.min(Math.max(window.devicePixelRatio,1),2));
+    renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+  window.addEventListener('resize', resize); resize();
+
+  const group = new THREE.Group(); group.rotation.x = 0.15; scene.add(group);
+
+  let envMap = null; const pmrem = new THREE.PMREMGenerator(renderer);
+  new THREE.TextureLoader().load('https://qclay.design/lovable/nothin/env.webp', (tex)=>{
+    tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+    envMap = pmrem.fromEquirectangular(tex).texture; scene.environment = envMap;
+    if (group.userData.mat){ group.userData.mat.envMap = envMap; group.userData.mat.needsUpdate = true; }
+    tex.dispose();
+  });
+
+  let ready=false, rotY=0, angVel=-0.6;   // spins to the right (around Y)
+  const IDLE=-0.6, DRAG_SENS=0.012, FLICK_MAX=26; // idle rad/s (rightward), drag rad/px, max flick
+
+  new GLTFLoader().load('https://qclay.design/lovable/nothin/copyright.glb', (gltf)=>{
+    let src=null; gltf.scene.traverse(o=>{ if(o.isMesh && !src) src=o; });
+    const geo=src.geometry.clone(); geo.computeBoundingBox();
+    const c=new THREE.Vector3(), s=new THREE.Vector3();
+    geo.boundingBox.getCenter(c); geo.boundingBox.getSize(s);
+    const sc=2.6/Math.max(s.x,s.y,s.z);
+    geo.translate(-c.x,-c.y,-c.z); geo.scale(sc,sc,sc);
+    const mat=src.material; mat.envMap=envMap; mat.envMapIntensity=1.4;
+    mat.color=new THREE.Color('#EEECEA'); mat.needsUpdate=true;
+    group.userData.mat=mat; group.add(new THREE.Mesh(geo, mat));
+    ready=true;
+    if (gsap) gsap.from(group.scale, { x:0, y:0, z:0, duration:1, ease:'expo.out' });
+  });
+
+  // ── flick-to-spin ──
+  let dragging=false, lastX=0, lastT=0, vel=0;
+  const now=()=>performance.now();
+  canvas.addEventListener('pointerdown', (e)=>{ dragging=true; lastX=e.clientX; lastT=now(); vel=0; angVel=0;
+    try{ canvas.setPointerCapture(e.pointerId); }catch(_){} });
+  canvas.addEventListener('pointermove', (e)=>{ if(!dragging) return; const t=now();
+    const dx=e.clientX-lastX; const dt=Math.max(t-lastT,1);
+    rotY += dx*DRAG_SENS; vel = (dx*DRAG_SENS)/dt; lastX=e.clientX; lastT=t; });
+  const release=()=>{ if(!dragging) return; dragging=false;
+    angVel = Math.max(-FLICK_MAX, Math.min(FLICK_MAX, vel*1000)); }; // px/ms -> rad/s (flick strength)
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+
+  const damp=(a,b,l,dt)=>{ const k=1-Math.exp(-l*dt); return a*(1-k)+b*k; };
+  let last=now();
+  function frame(t){ const dt=Math.min((t-last)/1000, 0.05); last=t;
+    if (ready){
+      if (!dragging){ angVel = damp(angVel, IDLE, 1.6, dt); rotY += angVel*dt; } // flick decays back to idle
+      group.rotation.y = rotY;
+    }
+    renderer.render(scene, camera); requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

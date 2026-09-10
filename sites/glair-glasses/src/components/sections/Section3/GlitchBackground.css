@@ -1,0 +1,59 @@
+@keyframes glitch-slice {
+  0%, 60% { transform: translateX(0); opacity: 1; }
+  64% { transform: translateX(-8px); opacity: 0.85; }
+  68% { transform: translateX(6px); opacity: 1; }
+  72% { transform: translateX(-5px); opacity: 0.9; }
+  76% { transform: translateX(7px); opacity: 0.8; }
+  80% { transform: translateX(-4px); opacity: 1; }
+  84% { transform: translateX(5px); opacity: 0.88; }
+  88% { transform: translateX(-6px); opacity: 0.95; }
+  92% { transform: translateX(3px); opacity: 1; }
+  96% { transform: translateX(0); opacity: 0.9; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes glitch-gate {
+  0%, 71.42% { opacity: 1; }
+  71.43%, 100% { opacity: 0; }
+}
+
+@keyframes glitch-gate-flicker {
+  0%, 71.42% { opacity: 1; }
+  74% { opacity: 0; }
+  78% { opacity: 1; }
+  82% { opacity: 0; }
+  87% { opacity: 1; }
+  91% { opacity: 0; }
+  96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.glitch-slice {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  animation-name: glitch-slice, glitch-gate;
+  animation-duration: 6s, 4.2s;
+  animation-timing-function: steps(1, end), steps(1, end);
+  animation-iteration-count: infinite, infinite;
+  animation-play-state: paused, paused;
+  will-change: transform, opacity;
+}
+
+.glitch-slice--flicker {
+  animation-name: glitch-slice, glitch-gate-flicker;
+}
+
+.glitch-in-view .glitch-slice {
+  animation-play-state: running, running;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch-slice {
+    animation: none;
+    opacity: 0;
+  }
+}

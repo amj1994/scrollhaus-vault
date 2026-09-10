@@ -1,0 +1,49 @@
+VANGUARD — Smart Banking
+Fintech landing page. Vite + React 19 + JSX (no TypeScript) + Tailwind CSS v3 + framer-motion.
+
+STACK
+- Vite 7, React 19, plain .jsx (no TypeScript), Tailwind v3 (classic config + postcss), framer-motion 12.
+- Lenis smooth scroll (src/lib/useSmoothScroll.js), applied by default to this site's normal document
+  scroll, wired in at the top of App.jsx.
+- Mobile breakpoint convention: max-[768px]: everywhere, with two deliberate exceptions using
+  max-[1360px]: instead (Navbar — 7 nav links + 2 auth buttons collide with the logo between
+  ~900-1300px; MobileApp — the 3-line title wraps and collides with the description block in that
+  same range). Both exceptions are commented in source as "do not revert to 768px."
+
+STRUCTURE (src/App.jsx render order)
+Navbar, Hero, Stats, EverythingBusiness, FeatureGrid, DashboardShowcase, MobileBuilt (intentionally
+empty spacer section, no content per original spec), Award, MobileApp, FAQ, FooterCTA, Footer.
+
+HERO VIDEO — the one asset that was swapped
+The original template hero used a stock clip ("Image right_1.mp4": a phone/dashboard mockup, shown
+twice — a static autoplay muted-loop on mobile, and a hover-play/reverse loop on desktop). That clip
+was replaced with an original, generated hero video so the deployed code and the showcased preview
+match exactly:
+  - Generated via Higgsfield: a still (nano_banana_pro) of a floating dark smartphone displaying a
+    banking-app dashboard UI (balance card, bar chart, transaction rows) in gold/lime accents against
+    black, with soft glass dashboard cards floating around it — then animated via kling3_0 using that
+    same still as both the start and end frame, for a slow, seamless ambient loop (gentle rotation/
+    bob, shimmering rim light, drifting background cards).
+  - Self-hosted as public/hero-video.mp4 (H.264, yuv420p, faststart) + public/hero-poster.webp.
+  - Referenced in src/components/sections/Hero.jsx in both places the template used the original clip:
+    the mobile autoplay-loop <video> and the desktop hover-play <video ref={videoRef}>.
+Every other video on the page is untouched and still hotlinked to the original template CDN
+(qclay.design/lovable/fintech/...): the 4 FeatureGrid icon clips, Award's "Golden block.mp4", and all
+background/decorative PNGs — per hero-only asset-swap scope, only the primary hero visual was
+regenerated.
+
+NOTABLE IMPLEMENTATION DETAILS
+- PixelButton (src/components/PixelButton.jsx): shared canvas pixel-sweep hover effect on every large
+  CTA. Sizes itself from its ResizeObserver's contentRect (not getBoundingClientRect) because buttons
+  enter via scale(0→1) motion animations, where getBoundingClientRect would read 0×0 mid-animation.
+- useHoverPlayVideo (src/hooks/useHoverPlayVideo.js): plays a video forward on mouseenter, reverse-
+  scrubs it via requestAnimationFrame on mouseleave; Hero's video uses finishIfPastHalf so it plays
+  through to the end instead of reversing if the mouse leaves past the halfway point.
+- Footer.jsx: a single phased cascade drives everything — social icons, then the two-line title, then
+  all ~44 nav entries across 5 columns, then every word of the 5 legal paragraphs, then a closing
+  divider — each phase's delay is computed from the previous phase's element count so the whole
+  sequence flows as one continuous wave.
+- FAQ.jsx: real accordion state (not a flat always-rendered list), first question open by default,
+  multiple can be open at once, answers animate height/opacity via AnimatePresence.
+
+Added 2026-09-10.

@@ -1,0 +1,173 @@
+Build a luxury handcrafted jewelry brand landing page for "ANULA" — a single-page app using
+Vite + Express with an index.html entry point served through Vite's SPA middleware in
+development and Express static serving in production. Scroll-driven video scrubbing, a
+horizontal product carousel with video reveal, a two-column stats section, and a fixed footer
+reveal. GSAP + ScrollTrigger drives every scroll animation.
+
+===============================================================================
+BUILD & SERVING ARCHITECTURE
+===============================================================================
+- Dev: Express (tsx server.ts) with Vite mounted as middleware
+  createViteServer({ server:{ middlewareMode:true }, appType:"spa" })
+- Build: vite build -> dist/, then esbuild bundles server.ts -> dist/server.cjs
+  (Node CJS, --packages=external)
+- Production: Express serves dist/ static with a catch-all to index.html
+- Page content lives in index.html at the project root with inline <style> and <script>
+- Express exposes GET /api/higgsfield-video, resolving a Higgsfield share page to its direct
+  MP4 (og:video meta first, bare .mp4 as fallback), returning { success, url }.
+  IMPORTANT: expose it, but do NOT let the page call it to replace its own <video> sources.
+  It resolves to whatever that share page points at — a third-party asset — and will silently
+  overwrite your own hero on load. Self-host the clips from /assets.
+- Pick a port that is actually free. 3000 is a common collision; if a smoke test returns HTML
+  you did not write (Next.js response headers are the giveaway) something else owns it.
+
+===============================================================================
+BRAND & DESIGN SYSTEM
+===============================================================================
+Brand: ANULA — handcrafted rings studio, Antwerp, est. 2021.
+Brand colour #A3111E (deep crimson) for the header wordmark and nav ONLY.
+Background #ffffff. Text #000000. Dividers #000000 solid 1px.
+Strictly black and white with the single crimson accent in the header.
+
+FONTS (Google Fonts): Instrument Serif (400 + italic) for all large display headings;
+Inter Tight (300-700 + italic) for body, buttons, nav, footer, UI; Cormorant Garamond
+(300-700 + italic) loaded but unused.
+  Headings: 'Instrument Serif', Georgia, serif
+  Body/UI:  'Inter Tight', 'Inter', Arial, sans-serif
+
+:root{--color-bg:#ffffff;--color-primary-text:#000000;--color-demoted-text:#000000;
+      --color-divider:#000000;--font-stack:'Inter Tight','Inter',Arial,sans-serif}
+
+===============================================================================
+ASSETS (self-hosted, /public/assets)
+===============================================================================
+  hero.mp4          scroll-scrubbed hero. A pale model against a blown-out white ground
+                    extends a ringed hand toward camera; one slow continuous push-in.
+  water.mp4         the reveal clip. The same ringed hand lowers to the surface of milky
+                    white water, ripples spreading. Fixed overhead camera.
+  hero-poster.webp  poster frame for hero.mp4
+  ring-1..4.webp    four floating signet rings on a near-white plate with a soft shadow
+
+ASSET NOTE — the whole page is keyed high, white on white. Generate the stills first, then one
+video from each with a single unbroken camera move. Product plates come out of the generator on
+a warm-grey ground that reads as a grey rectangle against the white cards: sample the plate's
+corner tone and rescale to white (out = in * 255/bg) so the shadow survives but the ground
+disappears.
+
+===============================================================================
+STRUCTURE
+===============================================================================
+1. FIXED HEADER — fixed top/left/right 32px, height 30px, z-index 100, flex space-between.
+   Left: "ANULA" wordmark, Instrument Serif 34px, #A3111E.
+   Right: nav group (gap 194px): "STUDIO" link (15px/500 uppercase #A3111E), then a cart group
+   (gap 50px) with a hamburger (two 30x2.2px #A3111E bars, 5px apart) and "[ BAG ]".
+   Hover: opacity .7 on every interactive header element.
+
+2. SCROLL-DRIVEN VIDEO HERO — .hero is height:500vh, background #000, z-index 10. Inside, a
+   sticky viewport (top:0, height:100vh, black, flex column, content pinned bottom-left,
+   padding 48px). The <video> is absolute, object-fit:cover, z-index 1, playsinline muted
+   preload="auto". Overlay content z-index 3, max-width 700px:
+   - Title "WEIGHTED" / "IN LIGHT", Instrument Serif clamp(36px,6vw,72px), weight 400,
+     line-height 1.05, letter-spacing -1px, #000. Each line is
+     <span class="hero-title-line"><span class="hero-title-line-inner">...</span></span>
+   - DISCOVER capsule button below (margin-top 10px): white, 1px solid rgba(0,0,0,.08),
+     border-radius 100px, padding 4px 4px 4px 18px, 13px/500 uppercase, plus a 28px #2e2e2e
+     circle with a white + built from ::before (10x1.5px) and ::after (1.5x10px). Hover flips
+     to black bg / white text / white circle with black cross. Click smooth-scrolls to footer.
+
+   THE SCRUBBING TECHNIQUE — the single most important detail on the page:
+     if (!video.seeking && Math.abs(video.currentTime - currentTime) > 0.01) {
+       video.currentTime = currentTime;
+     }
+   The !video.seeking guard tells the browser to take a new frame ONLY once it has finished
+   presenting the previous one. Without it the decoder is flooded with seeks and the picture
+   freezes, blacks out and stutters. Combine with currentTime += (target - current) * 0.08
+   inside a requestAnimationFrame loop. Use it on BOTH videos.
+   Past 80% progress the hero characters individually fade, blur and shift up (cubic easing per
+   character); the button fades with pow(progress,4).
+   Split each .hero-title-line-inner into <span class="hero-char"> on load.
+
+3. HORIZONTAL PRODUCT CAROUSEL — section 100vh, overflow hidden, 1px black top and bottom
+   borders, z-index 10. A flex row .awards-grid (width:max-content) of six cards, each 33.333vw
+   with a 1px right border, centred, padding clamp(40px,8vh,80px) 48px, gap clamp(24px,4vh,48px).
+   Image box height 280px, img max-width 85%, object-fit contain.
+   Name 18px/400 letter-spacing -.2px; price 16px/500 opacity .6.
+     Carnelian Seal $480 (ring-1) | Moonstone Dome $560 (ring-2) | Hammered Disc $620 (ring-3)
+     Quadrant Band $740 (ring-4)  | Pale Signet $820 (ring-1)    | Twin Dome $950 (ring-2)
+   ScrollTrigger pins the section (start "top top", scrub). Phase 1 translates the grid to
+   -(scrollWidth - innerWidth), ease "none". Phase 2 expands .video-scaling-wrapper from width
+   0% to 100%, centred via left:50%; transform:translateX(-50%), revealing water.mp4 beneath
+   (absolute, translate(-50%,-50%), 100vw x 100vh, object-fit cover), scrubbed off the expansion
+   progress with the same guard and the same 0.08 lerp.
+   will-change:width on the wrapper, will-change:transform on the grid, pointer-events:none
+   while the wrapper is at 0%.
+
+4. TWO-COLUMN STATS — CSS grid 50%/50%, 1px black bottom border.
+   Left column sticky top:0 height:100vh, flex column space-between, padding 48px 96px 48px 48px:
+   - Heading "Made In Full Light", Instrument Serif clamp(32px,4vw,42px)/400, line-height 1.15
+   - Three paragraphs, Inter Tight 24px/400, line-height 1.1, letter-spacing -.2px, gap 32px:
+     1. "Each ring is made by one person from start to finish - no line, no batch, no shortcut.
+        The stone is chosen first and the silver is shaped to hold it."
+     2. "We work in solid sterling and set stone. Nothing is plated, nothing is hollowed. The
+        weight you feel is the metal itself."
+     3. "ANULA is for people who want one good thing rather than several forgettable ones. Made
+        slowly, worn for decades."
+   - VIEW COLLECTION capsule button.
+   Everything in the left column carries data-fade-slide-in: autoAlpha 0->1, y 20->0,
+   stagger .15, duration .8, power2.out.
+   Right column: 1px black left border, four stat cards, each padding 48px, min-height 45vh,
+   1px bottom border except the last. Each holds a .stomp-wrapper with .stomp-stack.stack-a and
+   .stack-b, each containing duplicate h1s where :first-child{display:none}.
+   Heading Instrument Serif clamp(46px,5.5vw,70px), letter-spacing -1.5px, line-height .95.
+   Detail paragraph 24px, padding-top 42px, line-height 1.2.
+     100%     / Handmade  - Every ring cut, forged and finished by one pair of hands
+     14-92g   / Per piece - Weight is chosen, not left over - you feel each ring on the hand
+     Sterling / & Stone   - Solid silver and set stone only - no plating, no filler
+     Lifetime / Guarantee - Bring it back in twenty years and we will make it right
+   Card 4 also carries <p class="card-subtext">Est. ANULA Studio, 2021.</p> (13px, margin-top 12px).
+   Split each visible .heading-style-h1:last-child into <span class="stat-char"> and each
+   .detail-paragraph into <span class="detail-word">.
+
+5. FOOTER (fixed reveal) — position:fixed; bottom:0; left:0; z-index:1, revealed as the main
+   content scrolls past. A transparent .footer-spacer in normal flow has its height set from JS
+   to the footer's height. Grid 1.2fr 1fr 1.5fr, gap 48px, padding 80px 48px, white.
+   Col 1: "Sign in" link, then credits (18px, line-height 1.35):
+     Handcrafted in small batches / ANULA Studio / (blank) / Based in Antwerp /
+     (c) ANULA 2026 / All pieces are original designs.
+   Col 2: "Instagram" link, then Refund Policy, Privacy Policy, Terms of Service (gap 12px,
+     18px/400, hover opacity .6).
+   Col 3: "Newsletter" h3, description "Join our list. Be first to know new drops. 10% off your
+     first order." (18px, line-height 1.35, max-width 380px, margin-bottom 24px), then a capsule
+     form (#f7f7f5, radius 100px, padding 6px 6px 6px 24px, max-width 440px) with an Email input
+     (14px, transparent, focus box-shadow 0 0 0 1px #000) and a SUBSCRIBE capsule button.
+     On submit: alert("You're on the list. Welcome.").
+
+===============================================================================
+RESPONSIVE
+===============================================================================
+Tablet 769-1199px: header safe zone 24px, nav gap 100px, cart gap 32px; left column padding
+40px 32px; hero title 48px; stat headings 44px !important; left heading 30px; body 18px; award
+cards 50vw; footer 2 columns with the last spanning both.
+Mobile <=768px: header safe zone 16px, 44px touch targets; grid collapses to 1 column; left
+column no longer sticky, auto height; hero title 38px; stat headings 34px !important; body 15px;
+award cards 85vw; footer 1 column, padding 48px 16px; buttons min-height 44px.
+
+===============================================================================
+JS
+===============================================================================
+GSAP 3.12.5 + ScrollTrigger from cdn.jsdelivr.net. Behaviours: the scrub loop above; the
+per-character hero exit; the pinned horizontal scroll plus video reveal; the staggered left panel
+fade; the footer spacer sizing; debounced (200ms) resize that kills all ScrollTriggers and
+rebuilds only when the width actually changed; and initialisation on document.fonts.ready rather
+than window.load, so a slow video download never blocks the animations.
+
+===============================================================================
+ACCEPTANCE
+===============================================================================
+- Hero scrubs smoothly both directions with no black frames or stutter (the seeking guard).
+- Hero copy exits per character past 80% progress and leaves no residue.
+- Carousel pins, scrolls horizontally, then the reveal wrapper opens symmetrically to 100%.
+- Left column is sticky through the stat column; stat cards show only the second h1.
+- Footer reveals from behind the content; the spacer matches its height at every width.
+- No third-party asset URLs anywhere in the built page — search for the original CDN prefix.
+- Zero console errors; document.fonts.check passes for Instrument Serif and Inter Tight.

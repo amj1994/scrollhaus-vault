@@ -1,0 +1,110 @@
+.root {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  --badge-size: clamp(28px, 3vw, 38px);
+  --badge-gap: 56px;
+  /* Gap is applied between the badges (38px), but the visible glow images
+     overhang their badges by 17px (gold, 72px image) and 8px (indigo,
+     54px image) per side - a raw 18px gap here left the actual VISIBLE
+     circles overlapping by 7px, not 18px apart. 56px clears both
+     overhangs (25px) plus a real 30px+ of daylight between the circles. */
+  gap: var(--badge-gap);
+}
+
+.glow {
+  position: absolute;
+  inset: clamp(-30px, -3vw, -22px);
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(
+          ellipse at center,
+          rgba(120, 110, 200, 0.28) 0%,
+          rgba(120, 110, 200, 0.12) 45%,
+          rgba(120, 110, 200, 0) 75%
+  );
+  filter: blur(6px);
+}
+
+/* Each badge gets its own positioning context, so its background image
+   centers behind that specific badge - previously both background images
+   were positioned relative to the shared root (anchored to root's left/
+   right edges), which put them on a collision course with each other
+   regardless of how much gap sat between the badges themselves. */
+.badgeWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  border-radius: 50%;
+  color: #fff;
+}
+
+/* Fixed pixel sizes, not clamp()/vw-based - the previous responsive
+   sizing was what caused the "stretching" look, since it scaled
+   continuously with viewport width instead of staying a constant size
+   like the reference circles. */
+.backgroundImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  max-width: none;
+  transform: translate(-50%, -45%);
+  pointer-events: none;
+}
+
+.backgroundImageGold {
+  width: 72px;
+  height: 72px;
+}
+
+.backgroundImageIndigo {
+  width: 54px;
+  height: 54px;
+}
+
+.badgeGold {
+  color: #000;
+  background: linear-gradient(135deg, #f6b03c 0%, #e08a1f 100%);
+}
+
+.badgeIndigo {
+  background: linear-gradient(135deg, #8785f0 0%, #7674ed 100%);
+}
+
+/* Two thin gradient rails spanning the gap between the badges - anchored
+   to var(--badge-size)/var(--badge-gap) (the same values driving the
+   badges' own layout) rather than hardcoded pixels, so they stay
+   perfectly aligned with the actual gap at any screen size. */
+.connectorLine {
+  position: absolute;
+  left: calc(50% - var(--badge-gap) / 2);
+  width: var(--badge-gap);
+  height: 2px;
+  z-index: -1;
+  background: linear-gradient(90deg, #412eed 0%, #ffc250 100%);
+  pointer-events: none;
+}
+
+.connectorLineTop {
+  top: calc(20% - 6px);
+}
+
+.connectorLineBottom {
+  top: calc(75% + 6px);
+}

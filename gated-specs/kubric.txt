@@ -1,0 +1,51 @@
+KUBRIC — Making your business outstanding is a Science
+Single-viewport animated hero landing page. TanStack Start v1 + React 19 + Vite 8 + Tailwind v4.
+
+STACK
+- No animation library — vanilla DOM character-splitting (a TreeWalker over each
+  headline/label/description line, wrapping every non-space character in its own
+  `.hero__char` span with a computed `animationDelay`) driving pure CSS keyframe
+  reveals.
+- A body-level `is-ready` gate: every animated element is pre-attached with
+  `animation-play-state: paused` while `body:not(.is-ready)`; a `startAnimations()`
+  call adds `is-ready` once the hero video reaches `readyState >= 4` (or fires
+  `canplaythrough`, or a 5s hard fallback timer elapses), which releases every
+  paused keyframe at once for a synchronized entrance.
+- No backend, no database, no auth, single `/` route. The page is a fixed
+  100vh hero with no scrollable content below it — "Scroll down" smooth-scrolls
+  to `window.innerHeight`, which is the bottom of the same viewport.
+
+STRUCTURE
+Header (logo mark with four drawn arc paths, nav pill with a "Team" badge, "Book a
+call" button), giant three-line headline with an italic "Science" on its own line,
+a right-side vertical side-nav with an active-state sliding underline, an 8-layer
+stepped `backdrop-filter` blur transition at the bottom of the hero, and a bottom
+row: goal label, description, two CTAs (one of them a looping chevron "Scroll
+down"), and an "About us" card.
+
+HERO VIDEO — the one asset that was swapped
+The original template's hero used a stock looping clip ("hero-video.mp4" from
+qclay.design). That clip was replaced with an original, generated hero video so
+the deployed code and the showcased preview match exactly:
+  - Generated via Higgsfield: a still (nano_banana_pro) of a dark liquid-metal
+    macro swirl, keyed to a near-black/charcoal palette matching the page's
+    `--bg: #1e1e1e` and the white headline text sitting over it, then animated
+    via kling3_0 using that same still as both the start and end frame, for a
+    slow, seamless ambient swirl loop.
+  - Self-hosted as public/hero-video.mp4 (H.264, yuv420p, faststart).
+  - Referenced in src/routes/index.tsx in place of the original qclay-hosted
+    hero-video.mp4; the loop/rewind-at-10s `<video>` logic itself is untouched.
+The About-card thumbnail ("card-image.png", a tulip closeup) is left hotlinked to
+the original template CDN — per hero-only asset-swap scope, only the primary
+hero visual was regenerated.
+
+NOTABLE IMPLEMENTATION DETAILS
+- Character reveal timing is fully deterministic: each line's chars stagger by a
+  fixed 0.038s step off a per-line base delay, so headline/label/description all
+  resolve in a single continuous cascade rather than three independent animations.
+- The side-nav's active-state underline is a DOM node added/removed on click
+  (not a CSS-only :active state), so exactly one link ever shows the line.
+- No Lenis added — the page has no scrollable content beyond its own 100vh
+  hero, so there is nothing for a smooth-scroll library to do.
+
+Added 2026-09-10.

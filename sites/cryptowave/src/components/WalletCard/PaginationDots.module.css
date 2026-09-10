@@ -1,0 +1,28 @@
+.root {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: clamp(20px, 3vw, 32px);
+}
+
+.dot {
+  width: 20px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+  transition: width var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+}
+
+.dot:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.dotActive,
+.dotActive:hover {
+  width: 32px;
+  background: var(--color-gold);
+}

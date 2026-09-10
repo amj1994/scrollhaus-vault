@@ -1,0 +1,66 @@
+VALMAX — Ralph Edwards Photography
+Cinematic dark photography-studio portfolio with a 3.6s intro sequence, a canvas
+starfield, and an SVG constellation-line background layer. TanStack Start v1 +
+React 19 + Vite 8 + Tailwind v4 + Framer Motion + lucide-react.
+
+STACK
+- Framer Motion drives every section entrance (blur-in headlines, photo-collage
+  reveals, viewport-triggered fades) plus the parallax MechanicalMarvels background
+  (useScroll + useTransform).
+- A hand-built canvas <StarField> (background stars + an optional constellation
+  ring of stars around a center point, both independently twinkling via per-star
+  phase/speed) and an SVG <LineField> (five-ish animated constellation lines per
+  section, each with 0-3 labeled data-point markers), both reused across sections
+  with section-specific line coordinates and star counts.
+- A 3.6s <IntroSequence>: expanding ring trio, nine emitted rays, a growing white
+  dot centered on the logo mark, and the logo/wordmark box sliding + scaling down
+  from screen-center into the fixed header's slot — shortened to 0.1s under
+  prefers-reduced-motion.
+- No backend, no database, no auth, single `/` route.
+
+ASSETS — none swapped, all fetched verbatim from the original CDN
+Every photo, background texture, and icon (13 `photo-*.png` shots, the hero/
+about/marvels backgrounds, `logo.svg`, `noise.png`, `ellipse-arc.png`, the three
+`bg-*.png` textures, `Vector.svg`) was downloaded byte-for-byte from
+qclay.design/lovable/valmax/ into src/assets/ and imported as ES modules, per the
+source prompt's own instruction ("FOR EVERY ASSETS USE THIS URL"). This page has
+no generated-hero slot to swap — every visual is a real photograph from the
+template's own asset set, so nothing was regenerated.
+Fallback behavior implemented per spec: a failed photo renders a solid
+oklch(0.18 0 0) placeholder div at the same dimensions (no broken-image icon); a
+failed logo.svg falls back to a "VALMAX" text wordmark; failed decorative/
+background images (noise, bg-*, ellipse-arc, get-in-touch-bg) are omitted
+entirely rather than showing a broken-image box; a failed Vector.svg falls back
+to a lucide ArrowUpRight icon at the same pixel size. None of these fallbacks are
+actually exercised in production since every asset resolved on the real CDN —
+they're dead code paths kept for parity with the spec.
+
+GAPS IN THE SOURCE PROMPT — reconstructed, not invented from nothing
+The source prompt's "TopBar" section was corrupted mid-generation: the text
+describing the desktop-only "Email form" element cuts off and blends directly
+into a mobile-menu overlay's "Footer row" description (Follow / Instagram), with
+no actual nav-link list, panel styling, or open/close animation ever specified
+for the hamburger menu, despite `Menu` and `Clock3` being required lucide icons.
+Reconstructed as: a desktop-only mailto pill ("hello@valmax.studio" + ArrowUpRight,
+matching the spec'd hover classes exactly) with a `Clock3` + live local-time
+readout beside it (the plausible use for an otherwise-unexplained clock icon in
+a studio site's header), and a hamburger button that opens a small dropdown panel
+(nav links to each section + the spec'd "Follow / Instagram" footer row) — built
+to satisfy every literal class/behavior the surviving prompt text does specify,
+with the missing structural details filled in rather than left broken.
+
+NOTABLE IMPLEMENTATION DETAILS
+- All seven RalphHero photo cards use `translate3d` driven by CSS custom
+  properties (--mx/--my) set on a window `mousemove` listener, so parallax needs
+  no per-frame React re-render; disabled under prefers-reduced-motion.
+- StarField's ring mode (AllTypes section) scatters stars around a radius with a
+  Box–Muller Gaussian offset for a soft constellation band rather than a hard
+  circle, plus a matching soft radial-gradient halo painted first each frame.
+- MechanicalMarvels' bottom block scrubs its background image's vertical
+  position (0% → -15%) against the section's own scroll progress, layered under
+  a gradient overlay and a fifth LineField variant with higher line opacity.
+- The intro's logo box animates position/scale/width across four explicit
+  keyframe times (0, 0.6, 0.82, 1) so the wordmark visibly "arrives" into the
+  header slot near the end of the timeline rather than tracking linearly.
+
+Added 2026-09-10.

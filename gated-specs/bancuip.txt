@@ -1,0 +1,59 @@
+BANCUIP — Real-time fintech operations and analytics
+Full-scale fintech landing page: video-less parallax-zoom hero, a cursor-reactive
+decorative grid SVG, two green mockup-card product rows, a scroll-linked
+split-word feature cards section, a testimonial with a logo marquee, and a
+"liquid fill" hover stat-card section. Plain Vite + React 18 + TypeScript +
+Tailwind v4 + framer-motion + lucide-react + react-router-dom + @tanstack/
+react-query + sonner (per the source prompt's own "React 18 + shadcn scaffold
+may exist but the page is mostly custom inline styling" stack).
+
+STACK
+- Seven top-level section components (HeroNavbar, Hero, FintechPlatform,
+  FinanceFeatures, Testimonials, PowerOfFinance, Footer) assembled in
+  src/pages/Index.tsx exactly as the prompt's component map specifies.
+- framer-motion drives nearly every entrance (blur-in headlines, staggered
+  feature lists, animated bar-chart fills, whileInView reveals) plus two
+  bespoke scroll-linked effects: a slow Ken-Burns zoom-out on the hero photo
+  (scale 1.06→1.0 over a flat 8s, not scroll-tied) and a `useScroll`+
+  `useTransform` pair that pushes each FinanceFeatures card's two title words
+  apart horizontally as the card scrolls through the viewport.
+- The FintechPlatform section's decorative top-2.svg grid uses a genuine
+  cursor-follow spotlight: a full green-tinted CSS `mask-image: url(...)` copy
+  of the grid SVG sits under a second, radial-gradient CSS mask keyed to
+  `--mx`/`--my` custom properties updated on mousemove — so only the ~180px
+  circle around the cursor ever turns green, never the whole grid.
+- No backend, single `/` route via react-router-dom; @tanstack/react-query and
+  sonner's Toaster are wired up per the prompt's file map even though nothing
+  on the page actually triggers a toast or a query.
+
+ASSETS — none swapped, all referenced live from the original CDN
+Every asset (logo, hero photo, the top-2.svg grid, six feature icons, three
+green-card overlay images, three background photos, testimonial avatar/quote
+icon, and seven marquee logos) is referenced via a `const A = "https://
+qclay.design/lovable/bancuip"` base constant, matching this batch's now-
+familiar "GroundAI-style" remote-asset architecture per the prompt's own
+"Use this global asset base" instruction. Nothing was regenerated — there is
+no placeholder hero image or video here to swap, only real template assets.
+
+GAPS IN THE SOURCE PROMPT — reconstructed, not invented from nothing
+The prompt file itself cuts off mid-sentence 1546 lines in, inside the
+PowerOfFinance section's button styling — everything after that (the actual
+stat-card layout, and the entire Footer section, which the component map only
+ever describes as "logo, description, link columns, copyright and socials"
+with zero further detail) was never specified. Reconstructed:
+- Stat cards: a 3-column grid of square cards (num/value/label), with the
+  "liquid dark-green fill hover from bottom, not a simple color hover" that
+  the prompt insists on but never explains — built as a wide (140% width),
+  rounded-top (`border-radius: 50% 50% 0 0`) div that grows from `height: 0`
+  to `height: 130%` on hover via a CSS transition, its excess width and
+  overshoot height keeping the curved cap looking like a rising meniscus
+  rather than a hard-edged rectangle wipe; card text switches to white while
+  filled.
+- Footer: brand logo (white via the same `brightness(0) invert(1)` filter the
+  asset list calls for), a description reusing the hero's own copy, three
+  generic fintech-appropriate link columns (Product/Company/Resources),
+  copyright line, and Twitter/LinkedIn/GitHub icon links (lucide-react, since
+  no social icon assets were listed in the manifest) on the dark green
+  (#172110) background the color list specifies for the footer.
+
+Added 2026-09-10.

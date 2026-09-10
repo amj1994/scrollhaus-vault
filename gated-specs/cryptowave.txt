@@ -1,0 +1,222 @@
+Build "CryptoWave — Decentralized Future Cryptocurrency Assets" — a dark, glassy crypto
+wallet/exchange landing page. React 19 + Vite + TypeScript + Tailwind CSS v4 + Framer Motion.
+Three sections, each built from small, single-purpose components with CSS Modules (not
+Tailwind utility soup) and a carefully choreographed, hand-timed entrance sequence shared
+across the whole page via one signature easing curve.
+
+===============================================================================
+STACK & ARCHITECTURE
+===============================================================================
+Vite + React 19 + TypeScript. Tailwind v4 wired through @tailwindcss/vite (no tailwind.config
+— tokens live in plain CSS). framer-motion for every animation; no other animation library.
+clsx + tailwind-merge available but barely used — almost all styling is CSS Modules
+(ComponentName.module.css next to ComponentName.tsx), not Tailwind classes. This is a
+components-as-files architecture: ~30 leaf components, ~30 hand-drawn inline SVG icon
+components under src/components/icons/, one shared motion vocabulary under
+src/components/common/.
+
+App.tsx renders exactly three sections in a bare <main>: HeroFeatureSection, OrbitSection,
+FinalSection. No router needed for the page itself — this can run as a plain Vite SPA
+(mount <App/> at #root) even though the original was scaffolded on TanStack Start; nothing
+on the page touches server data or routing.
+
+===============================================================================
+ASSETS — hotlinked from a third-party bucket, re-host before shipping
+===============================================================================
+All media loads from https://qclay.design/lovable/crypto/ — the SAME third-party asset
+bucket used by an unrelated "Voyages & Chapters" template seen elsewhere (a Lovable-platform
+template author's own hosting, not yours to depend on long-term):
+  favicon.svg, abstract-design.svg (the TexturedFabButton's tilted background texture),
+  1.png (hero "stars" background), avatar.png (the connected-account avatar reused in both
+  PromoCard and FinalCopy), livepeer.png (DotsGlassIcon's small swap-mark image),
+  row-1.svg / row-2-featured.svg / row-3.svg (the OrbitSection's three icon-row backdrops),
+  several Ellipse/Polygon PNGs (decorative shapes), and one URL containing an unencoded
+  literal filename with spaces and brackets ("Div [AppFeatures_integrationLogoBox__8xiIH].png")
+  — copy it through a URL encoder before reusing, don't hand-retype it.
+Fonts: Google Fonts Inter (400-700), Manrope (300-700), JetBrains Mono (400-500), loaded via
+a standard <link> in the document head — no licensing issue, these are fine as-is.
+
+===============================================================================
+1. HeroFeatureSection (id="top") — src/components/HeroFeatureSection/
+===============================================================================
+Two stacked containers inside one <section>:
+
+1a. HERO — Navbar, then a two-column body: left column is HeroCopy over the "stars" PNG
+    background image, right column is a WalletCard (full variant, all sub-elements shown).
+
+Navbar (src/components/Navbar/): fixed-feeling header, LogoMark (an abstract folded-paper
+mark, 42px) on the left, three indexed nav links center/right — "[01] CryptoCurrencies"
+-> #crypto-currencies, "[02] Digital Assets" -> #digital-assets, "[03] Create a Wallet"
+-> #create-wallet — and a MenuIcon hamburger that toggles a full mobile panel (locks
+document.body's overflow while open, auto-closes if the viewport crosses the 900px
+breakpoint via a matchMedia change listener).
+
+HeroCopy (src/components/HeroSection/HeroCopy.tsx): a CubeIcon scales in (0.4->1, signature
+ease, 0.1s delay), then the headline via TextScramble in three FORCED lines — "Decentralized"
+/ "Future Cryptocurrency" / "Assets" — running on MOUNT (whileInView=false), 1.4s duration,
+0.2s delay. Below: the subhead "A Platform for CryptoWave Surfing Financial Freedom" via
+WordReveal (delay 0.9s, 0.04s per word — each word fades up from blur(6px) to sharp, NOT a
+simple opacity fade). Then two CTAs at delay 1.3s — "Discover" (ghost) and "Join now"
+(primary, ArrowRightIcon) — and a footer row at delay 1.5s holding a "Contact Us" pill
+(ChatBubbleIcon) and a circular SparkleIcon FAB.
+
+WalletCard (src/components/WalletCard/WalletCard.tsx) — THE SIGNATURE COMPONENT, reused
+three times across the page with different prop combinations. It is a glass panel that
+reveals itself in a single computed sequence rather than independently-timed pieces: a
+`useRevealTiming` hook walks a running time cursor forward through each stage so nothing
+overlaps in a way that reads as accidental. Order: panel background fades in FIRST as a
+hard gate (0.45s, nothing else starts until this finishes) -> optional CardStageBackground
+fades in -> a 42-star CardStarField draws in star-by-star (0.35s each, 0.012s stagger, so
+~0.85s total) -> optional WalletCardHeader -> a MiniTokenBar scales up from scaleY:0 with
+transform-origin:top (0.55s) -> the BalanceCard scales up the same way (0.65s), overlapping
+the tail of the token bar -> OverlapBadges reveal last. Default full variant shows: header
+(avatar + "0x12AB.....JK35" truncated address + Fiat-Exchange label), a "Bitcoin BTC
+0.00069848" mini row, the big balance "0.00578" with a copy-style corner icon, a wallet
+address row, four TransactionRow entries (Polygon Sent $4,141 -> X4ma..1da4, Ripple Swapped
+$5,151, Walletconnect Received $1,613 -> Bfa1..41da, Ripple Deposited $613), an
+OverlapBadges row (BTC + swap icon), and PaginationDots. The component accepts overrides
+(balance, address, custom action icon/label, and flags to hide the header/pagination/badges/
+stage-background) — the feature-column card later on this same section uses a stripped-down
+variant: balance "00.0495", a cursor shown, showHeader/showStageBackground/showBadges/
+showPagination all false, and a custom corner button (TexturedFabButton) instead of the
+default action icon.
+
+1b. FEATURE STRIP (id="digital-assets"): FloatingIcons (a decorative row of five glass-badge
+icons — dots/swap mark, menu circle, a featured Bitcoin badge sitting highest, triangle
+mark, small dots — staggered in a "gentle wave" arrangement, GlassBlobIcon glowing behind
+them) sits above a 3-column grid: PromoCard on the left, a CardsConnectorArrow SVG
+connector in the middle, and the stripped WalletCard variant on the right. Two pairs of
+soft orange/blue radial gradient blobs sit behind the promo and feature cards respectively
+(className gradientFeatureOrange/Blue and their "2" variants) for ambient color.
+
+PromoCard (src/components/FeatureSection/PromoCard.tsx): scales/fades in on scroll (0.97->1,
+0.6s), a Reveal-wrapped badge row ("Swap Assets" + GrayBitcoinIcon, delay 0.25s), a
+TextScramble heading "Powerful Web3 Experiences" (whileInView, delay 0.35s, 1.2s duration),
+a Reveal lede ("Leading self-custody multi-chain platform assets", delay 0.55s), a
+three-segment progress bar with only the first segment active (delay 0.65s), then a footer
+row (delay 0.75s) chaining an avatar image -> SquiggleConnectorIcon -> LightningLogoMark,
+plus a circular "Next" chevron button.
+
+===============================================================================
+2. OrbitSection (id="create-wallet") — src/components/OrbitSection/
+===============================================================================
+A large radial composition: OrbitRings (concentric ring SVG/CSS backdrop) fills the section,
+with OrbitNavButton prev/next chevrons pinned to the section's left/right edges. Inside the
+orbit: two IconRow arcs above the center copy and two below (topRows/bottomRows from
+protocolIcons.ts — a curated set of chain/protocol logos: a paint-drop mark, a red-triangle
+mark, Bitcoin (large, centered, highlighted), a chain-link mark, a Near-style mark on the
+top arc; a rabbit mark, "OP" (Optimism) badge, Tether mark, Ethereum diamond, a stylized
+triangle, and a small dotted mark on the bottom arc — each IconRow assigns sequential
+`startIndex` values across both rows of the pair so the whole set staggers as one sequence
+rather than resetting per row).
+Center copy: eyebrow "[03] Assets", then TextScramble heading "Cryptocurrency Surfing"
+(whileInView, delay 0.2s, duration 1.3s), then the lede "Use our Encrypted Cloud Backup for
+increased wallet security."
+
+===============================================================================
+3. FinalSection (id="fiat-exchange") — src/components/FinalSection/
+===============================================================================
+Two-column: FinalCopy on the left, a card stack on the right (SecurityCard full-width on
+top, then a sub-grid of DAppsCard + SwapCard below it, with the same orange/blue gradient
+blob pair behind them).
+
+FinalCopy: a small avatar -> SquiggleConnectorIcon -> logo chain (WaveRings pulsing behind
+a CubeIcon), then the heading "Encryption Build On Web3 Wallet For Crypto" via WordReveal
+(whileInView, delay 0.1s, 0.045s per word), lede "Try to buy, sell, and swap crypto, all in
+one place.", a "Let's try our wallet main feature" CTA -> #create-wallet (closing the loop
+back to OrbitSection), and a second "Contact Us" pill matching the hero's.
+
+SecurityCard: header "PROACTIVE ALERTS" eyebrow, a TextScramble heading — note this one
+scrambles a TWO-WORD phrase "Crypto with security encryption" split visually as "Crypto
+with" / "security encryption" via the component's `lines` mode — beside a WaveBadge (the
+same wave-ring + wallet glyph treatment as FinalCopy's logo, labeled "Wallet"). Below: two
+GitHub/Vercel-style activity rows ("vercel-site/jvjb4ynna", "1d ago", a commit note, a
+circular percentage ring at 62%; "vercel-site/gigj178vp", "10m ago", ring at 38%) and two
+pill buttons ("Create community", "Safe Browser").
+
+DAppsCard: "DApps" heading + a "COMING SOON" badge, body copy about taking control of
+crypto assets, three placeholder TransactionRow-style entries (address fragments, progress
+bars, Pending/Pending/SUCCESS status tags, a BNB-labeled row in the middle).
+
+SwapCard: minimal — "Buy, sell, and Swap" heading with a small sparkle/cursor glyph,
+otherwise deliberately empty/quiet as a visual counterweight to the busier DAppsCard beside
+it.
+
+===============================================================================
+SHARED MOTION VOCABULARY (src/components/common/)
+===============================================================================
+motionConfig.ts — ONE constant, SIGNATURE_EASE = [0.21, 1.02, 0.43, 1.01] (a cubic-bezier
+with a slight overshoot — the second value exceeds 1 — so every entrance settles with a
+soft spring-like ease, never a flat linear stop). Every animated element on the page uses
+this same curve; it is what makes ~30 independently-built components read as one motion
+language instead of a grab-bag.
+
+motion.tsx — two reusable primitives:
+  WordReveal: splits text (or explicit `lines`) into words, each wrapped in its own
+    motion.span animating opacity 0->1, y:14px->0, AND filter:blur(6px)->blur(0) — text
+    visibly comes into focus rather than just sliding or fading. Takes `delay` (first word)
+    and `wordDelay` (stagger between words); optionally triggers on scroll-into-view instead
+    of on mount.
+  Reveal: a generic scroll-triggered wrapper for non-text content (cards, badges, whole
+    blocks) with three variants — fade-up (y:28->0), scale (0.92->1), fade (opacity only) —
+    all using SIGNATURE_EASE, once:true, configurable `amount` threshold.
+
+TextScramble.tsx — the page's other signature text effect, distinct from WordReveal. Takes
+either `text` or `lines` (array, joined with \n and rendered as stacked block spans). Once
+triggered (on mount, or on scroll-into-view via useInView once:true), runs a setInterval at
+`speed`ms (default 30) for `duration*1000/speed` total frames: each frame reveals
+`floor(progress * text.length)` real characters from the start and fills the rest with a
+random character from an alphanumeric+symbol pool, so the text appears to decrypt/resolve
+left-to-right rather than fading in. Spaces and newlines are never scrambled. IMPORTANT for
+capture/screenshot purposes: this effect takes `delay + duration` seconds (typically
+1.2-1.4s total) to fully resolve to real text after its trigger fires — a screenshot taken
+too soon after scroll will catch it mid-scramble (garbled characters), which is correct
+behavior, not a bug. Wait at least 2s after scrolling a TextScramble heading into view
+before capturing.
+
+TexturedFabButton.tsx — a reusable tilted circular button (abstract-design.svg background
+texture, thick dark border, inset highlight) holding a SparkleIcon; originally built for the
+hero's "quick actions" FAB, reused as the corner action button on the feature-column
+WalletCard variant rather than duplicating the styling.
+
+===============================================================================
+DESIGN TOKENS (src/styles/tokens.css)
+===============================================================================
+Single source of truth, consumed via CSS custom properties (not Tailwind theme extension —
+this app barely uses Tailwind utility classes at all). Authored against a 1440px reference
+viewport with fluid clamp()-based values so the UI scales continuously from ~375px to 4K
+rather than jumping at breakpoints.
+  --color-bg:#060606  --color-bg-elevated:#0d0d0f  --color-panel:#0c0c0e
+  --color-surface-1/2/3: white at 4%/6%/9% opacity (glass surface fills)
+  --color-border-subtle/default/strong: white at 8%/14%/22% opacity
+  --color-border-hairline:#22202f  --color-border-panel:#2c2d32
+  --color-text-primary:#fff  --color-text-secondary: white 60%  --color-text-tertiary: white 38%
+  --color-text-on-accent:#10090a
+  --color-gold:#f6b03c  --color-indigo:#6562ea
+  --gradient-accent: linear-gradient(128deg, gold 12%, indigo 88%) — the brand mark's core
+    gradient, taken directly from the source icon SVGs
+  --gradient-surface-2: a barely-there white gradient used on small glass chips/buttons and
+    the balance card
+
+Global rules (src/styles/global.css): body font-family set to Helvetica/Arial/sans-serif via
+an aggressive `* { font-family: ... !important }` (deliberately overrides any font-family
+set elsewhere, including the loaded Google Fonts — treat this as intentional: the design
+tokens define --font-display/--font-body variables but the global override wins in
+practice). Headings (h1-h3) get --font-display, 500 weight, tight tracking. Visible
+2px gold focus ring on keyboard focus. Selection highlight uses --color-indigo.
+
+===============================================================================
+ACCEPTANCE
+===============================================================================
+- Every TextScramble and WordReveal instance fires once and settles to real, readable text
+  — never leave a component mid-scramble in a static screenshot or capture.
+- The WalletCard's internal reveal sequence is a single continuous timeline (computed via
+  useRevealTiming's running cursor), not independently-delayed pieces that happen to overlap
+  by coincidence — panel background is a hard gate before anything else starts.
+- All three WalletCard instances on the page share the exact same component with different
+  prop flags, not three separately-built card variants.
+- Every entrance animation across all ~30 components uses SIGNATURE_EASE — an inconsistent
+  easing curve anywhere is a visible regression, not a style nit.
+- Zero console errors; zero horizontal overflow at any breakpoint.
+- Re-host the qclay.design-hotlinked assets (icons, textures, avatar, stars background)
+  before treating this as a finished, ownable asset — same caution as any third-party bucket.

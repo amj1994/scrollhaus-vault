@@ -1,0 +1,50 @@
+.root {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: clamp(70px, 8vw, 100px);
+  margin-bottom: clamp(20px, 3vw, 36px);
+}
+
+.blobWrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.6vw, 36px);
+}
+
+.item {
+  display: inline-flex;
+}
+
+/* Gentle wave: the featured bitcoin badge sits highest, the small dots/swap
+   marks sit lowest, matching the reference's staggered arrangement. */
+.itemDots {
+  transform: translateY(14px);
+}
+
+.itemMenu {
+  transform: translateY(2px);
+}
+
+.itemFeatured {
+  transform: translateY(-6px);
+}
+
+.itemTriangle {
+  transform: translateY(4px);
+}
+
+.itemSwap {
+  transform: translateY(18px);
+}

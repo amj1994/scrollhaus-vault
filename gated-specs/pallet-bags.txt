@@ -1,0 +1,53 @@
+BAGS CRAFTED — Bags crafted to move with your story
+Fashion/accessories landing page in three movements: a warm-cream editorial
+sticker-collage hero, a true-black scroll-driven envelope that spills six
+product photos into a horizontal lineup, and a light-paper section where six
+bags orbit slowly around "Find your perfect match". Plain Vite + React 18 +
+TypeScript + Tailwind v4 + framer-motion.
+
+STACK
+- A shared `SerifGlow` component (dual-layer Instrument Serif — a stroked
+  fluorescent-yellow-green back layer plus a solid-fill front layer — with a
+  "tubular curl" entrance that rotates the word in from `rotateX: -110` like a
+  sticker unfurling) is reused for all four signature accent words: "your"
+  (Hero), "elegance" (Hero), "new" (Collection header), "match" (PerfectMatch
+  title) — exactly the technique the prompt names as the brand's visual
+  through-line.
+- Section 2 (Collection) is a 400vh scroll stage: a `useScroll`-driven envelope
+  (body, two side flaps, a bottom flap, and a triangular top flap that folds
+  180°→0° between 20-45% scroll) that drops in, opens, and lets six photo
+  cards peek out of the "V", then drop and fan into a final horizontal row —
+  all positions driven by per-card `useTransform` chains across two scroll
+  windows (peek, then drop-to-row), gated by three `.on("change")`-derived
+  booleans (`cardsOut`, `cardsVisible`, `photosAboveFlap`) rather than any
+  `visibility: hidden` toggle, per the prompt's explicit note that an earlier
+  version of this exact spec had a bug where photos vanished past 67% scroll —
+  this build never hides them.
+- Section 3 (PerfectMatch)'s six bags orbit a shared center via a plain
+  `requestAnimationFrame` loop incrementing an angle state (~7.2°/sec), not
+  scroll-linked — hovering any bag sets a `paused` flag that freezes the whole
+  orbit, matching the spec's "onMouseEnter pauses everything" behavior.
+- No backend, no router, single page.
+
+ASSETS — none swapped, all referenced live from the original CDN
+Every image (woman, stickers, six envelope/flap textures, six collection
+photos, six orbiting bags, the torn-paper bridge, eye icon) is referenced via
+an `ASSET` base constant pointing at qclay.design/lovable/bags/, exactly per
+the prompt's "no asset is bundled locally" instruction. Nothing was
+regenerated — every asset is real template artwork, not a placeholder.
+
+BUGS FOUND AND FIXED DURING VERIFICATION
+Two elements silently lost their positioning: the Hero's "LOVE BAG" label (a
+`motion.div` animating `x`/`opacity`/`filter` that also carried a static
+`transform: "translateY(-50%)"` in the same style object) and the bottom-left
+Polaroid thumbnails (a `motion.div` animating `y`/`opacity` that also carried
+a static `transform: "rotate(Ndeg)"`). In both cases Framer Motion takes over
+the whole `transform` CSS property once any of its own motion values are in
+play, silently discarding a hand-written transform string in the same style
+object — so the label rendered un-centered and the polaroids rendered
+unrotated. Fixed by moving each static transform onto a plain wrapping `<div>`
+outside the animated `motion.div`, verified afterward via computed-style
+matrix inspection. The identical root cause was also found and fixed in the
+already-deployed Sixsense send button this session.
+
+Added 2026-09-10.

@@ -1,0 +1,105 @@
+Build a single-page site called **ai/SmartSolution** — a dark spatial-scrolling showcase
+of four full-screen glass cards (Productivity, Flexibility, Unify Teams, Team Created).
+Recreate it EXACTLY as specified: stack, file layout, colors, spacing, copy, and animation
+timing are all intentional. Do not substitute, paraphrase, or "improve" anything.
+
+## 1. Stack & project setup
+- Vite + React 19 + TypeScript + Tailwind CSS v4 (via `@tailwindcss/vite`, no separate
+  config file) + framer-motion for every animation.
+- Page background `#0a0d15`. Body font stack: `--font-jakarta` ("Plus Jakarta Sans")
+  for display/headline text, `--font-aeonik` (DM Sans Variable) for body/UI text.
+- Files: `src/main.tsx`, `src/App.tsx` (renders `<SpatialScroll />`), `src/index.css`,
+  `src/hooks/useIsMobile.ts`, `src/BlurFadeWords.tsx`, `src/SpatialScroll.tsx`,
+  `src/sections/AnimatedNetworkLines.tsx`, `src/sections/Section1Productivity.tsx`,
+  `src/sections/Section2.tsx` (Flexibility), `src/sections/Section3.tsx` (Unify Teams),
+  `src/sections/Section4.tsx` (Team Created). `public/assets/` holds 63 image/SVG assets.
+
+## 2. Navigation model — SpatialScroll.tsx
+On desktop, a 200vw × 200vh `motion.div` (driven by two framer-motion `useMotionValue`s,
+`x`/`y`) sits inside a 100vw × 100vh `overflow:hidden` viewport. The four sections are
+absolutely positioned in a clockwise loop:
+- Section 1: top 0, left 0
+- Section 2: top 0, left 74vw
+- Section 3: top 82vh, left 74vw
+- Section 4: top 82vh, left 0
+A non-passive `wheel` listener (deltaY > 0 = forward, < 0 = backward, blocked in reverse
+until the loop has completed once) calls `animate(x, …)`/`animate(y, …)` with
+`duration:0.85, ease:[0.76,0,0.24,1]`, followed by a 950ms re-trigger cooldown. Touch swipe
+(50px threshold, dominant axis wins) drives the same `goTo`. On resize, position snaps to
+the current section without re-animating. Below 1024px width, this collapses to a plain
+vertical `overflowY:scroll` container with `scroll-snap-type:y mandatory` and each section
+wrapped in a `scroll-snap-align:start` slot instead.
+
+## 3. Shared card scaling wrapper (used identically by all 4 sections)
+Each section is a native 1040×684px card, scaled to fit: `scale = min(1, w/1440, h/900)`
+on desktop, or `max(0.28, (w-24)/1040)` on mobile. The card renders at native size inside
+an absolutely-positioned `transform:scale(...)` wrapper so nothing reflows at odd sizes.
+Each card: `borderRadius:24px`, `backgroundSize:115%`, `backgroundPosition:center`,
+`overflow:hidden`, and a heavy multi-layer `boxShadow` for depth. Entrance animations are
+gated behind an `IntersectionObserver` (92% visible to fire on desktop, 20% on mobile;
+resets below 10%/5%) so each section replays its intro every time it's scrolled back into
+view, not just once.
+
+## 4. Section 1 — Productivity (green, #24FF95)
+- **Background: a real autoplaying, looping, muted video, not a static photo** — a slow,
+  subtle ambient dark-green glow drifting across near-black, ~4 seconds, seamless loop
+  (`autoPlay loop muted playsInline`, with a poster frame for first paint). Everything else
+  in this section is unchanged from the source spec.
+- Text block: badge `01/03`, H1 `Productivity`, gradient subhead `ai/SmartSolution`
+  (`#9BFFCF → #24FF95`), body copy, all revealed via `BlurFadeWords` (per-word blur+fade,
+  staggered 0.07s/word).
+- Diagram block: `AnimatedNetworkLines` (30-path fan/network SVG with a traveling glow dot
+  on the first two paths) plus three floating icon buttons (asterisk / Discord / Slack)
+  that pop in with spring rotation.
+- Right half, two stacked cards: top "Create a Team" card with a 3-ring orbiting-avatar
+  diagram (GitHub icon + 6 avatars) that spring-rotates into place; bottom "Personal
+  Performance" card with an animated crypto-chart SVG that reveals via clip-path and 5
+  category pills that fade in staggered. Both cards get a rotating conic-gradient
+  `MagicBorder` (mask-based ring trick), plus one large `MagicBorder` around the whole card.
+
+## 5. Section 2 — Flexibility (purple, #906AFF)
+Same left-side layout pattern (badge `02/03`, H1 `Flexibility`, gradient subhead
+`ai/World-Wide`, network diagram) against `s2-card-bg.png`. Right side: a single tall
+"Journey to the Far Reaches" card — "Adding Plan..." loading row, a prev/next pill control,
+body copy, a "Create a Plan" pill button, a rotating `MagicBorder`, and a bottom-right
+"Help Center / Support Team" row — all revealed with staggered opacity/spring transitions.
+
+## 6. Section 3 — Unify Teams (blue, #4C6DFF)
+Badge `03/03`, H1 `Unify Teams`, gradient subhead `ai/EasierTeamwork`, network diagram
+against `s3-card-bg.png`. A chandelier SVG wipes in via `clipPath`. Three chat bubbles
+("hola", "hello friend", "hello kitty") pop in with a 3D rotateX tilt, staggered. Bottom-
+right "3SectionCard" — team member list with an "Add members" pill button — rotates in
+from the right in 3D perspective with its own `MagicBorder`.
+
+## 7. Section 4 — Team Created (white/grey)
+No left-column diagram — this section is centered. `OrbitRings`: four concentric ring SVGs
+that scale/fade in staggered (220ms apart), hold, scale/fade out, then the whole 4-ring
+cycle repeats every ~3s while the section is in view. Centered H1 `Team Created`, gradient
+subhead `ai/Running Plan Template`, body copy, then a 3D-tilted stats bar
+(device→arrow→desktop icon row, 3 avatars, 3 rotating social icons, a "Template" pill, and
+a rotating white `MagicBorder`), and finally an "Open in 25 Sec..." pill button with a
+spinner icon.
+
+## 8. Shared components
+- `BlurFadeWords`: splits text into words, each animates `opacity:0,blur(8px)` →
+  `opacity:1,blur(0)`, delay `baseDelay + i*0.07`, duration 0.5s, easeOut.
+- Local `AnimatedWords` (defined inside Sections 1 & 2 only): simpler word-by-word opacity
+  fade, no blur, delay `baseDelay + i*0.1`, duration 0.4s.
+- `MagicBorder`: a 2px conic-gradient ring masked to only show the border (WebkitMask xor
+  trick), rotating infinitely — reused with a different accent color per section.
+- `AnimatedNetworkLines`: 30 SVG paths draw in via `pathLength` animation staggered 0.1s
+  apart; the first two paths also carry a glowing dot that travels the path on an
+  `animateMotion` loop; a Gaussian-blurred colored "hub" glow fades in at the network's
+  center.
+
+## 9. Responsive behavior
+Below 1024px, `SpatialScroll` switches to vertical scroll-snap and every section's
+`IntersectionObserver` thresholds relax (20%/5% instead of 92%/10%) so content reveals
+sooner on a slower swipe gesture. Card scale clamps to a minimum of 0.28 so the layout
+never collapses to unreadable size on narrow phones.
+
+## 10. Assets
+All 63 UI/background assets (card textures, avatars, icons, chat bubbles, stat-bar
+graphics) are original and self-hosted in `public/assets/`, not hotlinked from a third
+party. The only asset replaced from the original design is Section 1's card background,
+which is a real generated video loop rather than the original static PNG texture.

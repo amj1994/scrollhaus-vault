@@ -1,0 +1,45 @@
+Build a single-page product landing site called "NEXUS" for a smart ring — dark, minimal,
+tech-luxury aesthetic (background #050505, off-white text). A locked-camera hero video is the
+centerpiece: a matte-black smart ring rolling into frame, settling upright on a dark reflective
+studio floor, then rising and disassembling in a slow, precise exploded-view reveal of its 8
+internal components.
+
+## 1. Stack
+Vite + React 19 + TypeScript + Tailwind CSS v4 (`@tailwindcss/vite`, no config file) +
+framer-motion for scroll-into-view reveals. Two fonts: Orbitron (display/headings — geometric,
+futuristic, all-caps tracking) and Inter (body). Orbitron is a free-license substitute for the
+originally-requested "Neotrax Regular" display font, which has no distributable web-font source.
+
+## 2. Layout
+- Fixed header: "NEXUS" wordmark (Orbitron), center nav (Specs / Inside / Pre-order), a pill
+  "Pre-order" button on the right — all over a transparent-to-video header band.
+- Hero: full-bleed autoplaying/looping/muted video (`/hero-video.mp4`, poster `/hero-poster.webp`),
+  a dark gradient scrim (vertical + horizontal) for text legibility, a large Orbitron headline
+  "WEAR THE FUTURE", a one-line description, a "Reserve Yours" pill CTA, and a "SCROLL" hint
+  centered at the bottom.
+- Specs section (`#specs`): a 4-up bordered grid — Battery Life (7 Days), Water Resistance
+  (10 ATM), Sensors (4-in-1: heart rate/SpO2/temp/motion), Connectivity (BLE 5.3) — each card
+  fades/slides in on scroll-into-view, staggered.
+- Inside section (`#inside`): headline "Eight parts. One seamless shell.", the generated
+  exploded-view still (`/exploded-view.webp`) in a rounded frame, then a numbered 4-column list of
+  the same 8 components named in the hero video (outer shell, inner liner, sensor cover lens,
+  optical sensor module, logic board, battery cell, support bracket, seal ring).
+- Pre-order section (`#preorder`): centered headline + email capture form (non-functional demo
+  input + "Notify Me" button).
+- Footer: wordmark + copyright line.
+
+## 3. Hero video generation
+Two reference stills were generated with Higgsfield (`nano_banana_pro`): frame 1 is the assembled
+ring in the requested three-quarter studio product shot (matte black, glossy teardrop sensor
+panel, resting tilted on a dark reflective floor, soft upper-left key light); frame 2 — generated
+using frame 1 as an image reference for consistency — is the same ring shown as a clean horizontal
+exploded-view arrangement of its 8 internal parts, same lighting/background. Both were fed to
+`kling3_0` as start_image/end_image with a locked-camera motion prompt (roll in from right → settle
+upright → rise off the floor as the reflection fades → disassemble in even, staggered horizontal
+spacing → hold on the final exploded arrangement), condensing the original ~10.4s multi-phase
+choreography into one continuous generated shot.
+
+## 4. Assets
+`hero-video.mp4` / `hero-poster.webp` (Higgsfield-generated, self-hosted) and
+`exploded-view.webp` (the same Higgsfield still used as the video's end-frame reference,
+self-hosted) are original generated assets — not hotlinked or downloaded from any third party.

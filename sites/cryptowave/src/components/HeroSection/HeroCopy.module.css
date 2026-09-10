@@ -1,0 +1,155 @@
+.root {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+  min-height: clamp(420px, 62vw, 620px);
+  padding-block: clamp(24px, 4vw, 56px);
+}
+
+.centerBlock {
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 46rem;
+}
+
+.cube {
+  color: var(--color-text-primary);
+  margin-bottom: clamp(20px, 2.6vw, 32px);
+}
+
+.headline {
+  max-width: 18ch;
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  font-weight: 300 !important;
+}
+
+.lede {
+  margin-top: clamp(18px, 2.2vw, 28px);
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  font-family: Helvetica, var(--font-sans, sans-serif);
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 300;
+  line-height: 44px;
+  letter-spacing: -0.72px;
+  max-width: 46rem;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(28px, 3.6vw, 44px);
+}
+
+.btnGhost,
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.85em 1.7em;
+  font-size: var(--fs-button);
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  transition: transform var(--duration-fast) var(--ease-out),
+  background-color var(--duration-fast) var(--ease-out),
+  border-color var(--duration-fast) var(--ease-out);
+}
+
+.btnGhost {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.btnGhost:hover {
+  background: var(--color-surface-3);
+  transform: translateY(-1px);
+}
+
+.btnPrimary {
+  color: var(--color-text-primary);
+  background: linear-gradient(var(--color-bg), var(--color-bg)) padding-box,
+  var(--gradient-accent) border-box;
+  border: 1px solid transparent;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06))
+  padding-box,
+  var(--gradient-accent) border-box;
+}
+
+.btnPrimary svg {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.btnPrimary:hover svg {
+  transform: translateX(2px);
+}
+
+.footerRow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.contactPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.7em 1.15em;
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.contactPill:hover {
+  background: var(--color-surface-2);
+}
+
+.fab {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: clamp(9px, 0.9vw, 12px);
+  color: var(--color-text-primary);
+  background: url("https://qclay.design/lovable/crypto/abstract-design.svg") center/cover, #1a1a23;
+  border: clamp(4px, 0.4vw, 5px) solid #212124;
+  border-radius: clamp(28px, 2.6vw, 37.5px);
+  box-shadow: 8px 6px 4.5px 1px rgba(255, 255, 255, 0.1) inset;
+  transform: rotate(-15deg);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.fab svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fab:hover {
+    transform: rotate(-5deg) scale(1.05);
+  }
+}

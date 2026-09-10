@@ -1,0 +1,19 @@
+# Secrets — never commit. See .env.example
+.env
+.env.local
+*.key
+
+# Source masters (large). Keep locally / archived on Gumlet, not in git.
+masters/
+*.mov
+*.mp4
+
+# Tooling
+node_modules/
+.vercel/
+.DS_Store
+Thumbs.db
+
+# Local QA output
+shots/
+*.log

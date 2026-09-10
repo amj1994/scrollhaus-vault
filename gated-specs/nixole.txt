@@ -1,0 +1,58 @@
+Build a one-page TanStack Start (React 19 + Vite + Tailwind v4) landing page for "Nixole" — AI
+that converts patients for medical practices. Match the spec below pixel-for-pixel.
+
+## 1. Stack
+TanStack Start file-based routing (`src/routes/__root.tsx` + `src/routes/index.tsx`), Tailwind
+v4 CSS-first config in `src/styles.css` (no tailwind.config.js), framer-motion for every
+animation, Lenis for buttery inertia scrolling. Font: Inter Tight (300–700) via Google Fonts.
+Title: "Nixole — AI that converts patients for your medical practice".
+
+## 2. Design tokens
+`src/styles.css` defines an oklch design-token theme (white background, near-black foreground,
+a warm yellow accent `oklch(0.88 0.18 95)`), plus the `.mesh-showcase` animated radial-gradient
+mesh background (7 layered radial gradients + a diagonal shimmer sweep + hue-rotate drift,
+running continuously via `meshFlow`/`meshDrift`/`shimmerSweep` keyframes), a `.animate-marquee`
+28s linear infinite scroll, and `.dot-pop` for the dashed-connector dots.
+
+## 3. Layout
+- **Header**: Nixole logo (mark + wordmark, letter-by-letter rise-in) on the left; center nav
+  (Home/How it works/Company/Case Studies) fading up staggered; a "Book a demo" pill on the
+  right, popping in with a back-out ease.
+- **Hero**: an eyebrow pill ("AI" badge + "Autonomous calls, enrollment & payments"), then a
+  three-line H1 built from per-word rise-in animations — "AI that converts patients" / "for
+  your [inline circular looping video avatar] medical practice" (the muted-tone third line) —
+  a subheading paragraph, and two CTA pills ("Book a demo" outlined, "Let's Talk" solid yellow).
+  **The inline circular avatar is a real autoplaying/looping/muted video** — not a static
+  photo — showing a warm, reassuring nurse portrait with barely-perceptible breathing/blink
+  motion, generated fresh rather than reused stock footage.
+- **Showcase card**: the full-width `.mesh-showcase` panel containing two inner cards — a dark
+  "All-in-One Enrollment Platform" card (with a floating browser-mockup screenshot, a
+  hand-drawn dashed-dot connector line animating in from the mockup to a "Key Features"
+  glass popover listing 5 features with "Payments & Subscriptions" highlighted in yellow with
+  a check), and a white testimonial card ("What our customers say", dated "Feb 02, 2026", a
+  quote, an avatar+wordmark, and a 4.5-star rating). Below both cards, a "Trusted by…" line and
+  an infinite-scrolling brand-logo marquee.
+
+## 4. Assets
+8 static files (logo mark, logo wordmark variant, browser mockup screenshot, avatar/wordmark
+SVGs, feature-header arrow icon, Upside wordmark) are downloaded from the source CDN and
+self-hosted under `src/assets/`, imported as modules (not hardcoded URLs) per the spec's own
+instruction. The four "trusted by" brand marks (Intel, Oracle, GoFundMe, Nutanix) are rendered
+as plain text wordmarks rather than their real trademarked logo artwork — the source spec
+referenced that artwork from its own project file without inlining the actual path data, so it
+wasn't available to copy verbatim.
+
+## 5. Hero video generation
+The circular nurse avatar clip was generated with Higgsfield: a still portrait (`soul_2`,
+warm studio lighting, blue scrubs, reassuring expression) animated with `kling3_0` using the
+same frame as both start and end reference, producing an extremely subtle breathing/blink loop
+with no visible seam. Self-hosted as `hero-video.mp4`/`hero-video-poster.webp` — not a
+downloaded stock clip.
+
+## 6. Verification
+Header logo + wordmark animate in letter-by-letter; eyebrow pill fades up; the H1 rises word by
+word with the nurse video playing inline in a circle; both CTAs scale in with a back-out ease;
+the mesh-showcase card rises into view with its gradient continuously animating; the dashed dot
+line draws itself from the browser mockup to the Key Features popover; "Payments &
+Subscriptions" stays highlighted yellow with a check icon; the testimonial card shows 4.5
+yellow stars; the brand marquee loops seamlessly leftward forever.

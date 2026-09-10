@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Tenth Name — Emergency Heat, Seven Days</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<style>
+:root{
+  /* Ground: oxidized copper / verdigris. Warms toward raw copper on scroll. */
+  --cold:      oklch(0.205 0.032 192);
+  --warm:      oklch(0.245 0.048 52);
+  --ink:       oklch(0.945 0.012 82);
+  --muted:     oklch(0.735 0.021 192);
+  --copper:    oklch(0.735 0.132 56);
+  --copper-dim:oklch(0.52 0.085 56);
+  --tag:       oklch(0.885 0.028 88);
+  --tag-ink:   oklch(0.30 0.035 60);
+  --hair:      oklch(1 0 0 / 0.13);
+
+  --heat: 0;
+
+  --z-rail: 20;
+  --z-header: 30;
+  --z-loader: 60;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+html{ -webkit-text-size-adjust:100%; }
+
+body{
+  background: var(--cold);
+  color: var(--ink);
+  font-family:'Public Sans',system-ui,sans-serif;
+  font-size:1rem;
+  line-height:1.65;
+  overflow-x:hidden;
+  position:relative;
+}
+
+/* Warm layer fades in as the house heats. Opacity only — GPU cheap. */
+body::before{
+  content:'';
+  position:fixed; inset:0;
+  background: var(--warm);
+  opacity: var(--heat);
+  pointer-events:none;
+  z-index:-2;
+}
+
+::selection{ background: var(--copper); color: oklch(0.18 0.03 60); }
+
+a{color:inherit}
+
+:focus-visible{
+  outline:2px solid var(--copper);
+  outline-offset:3px;
+  border-radius:2px;
+}
+
+.wrap{ width:min(100% - 3rem, 68rem); margin-inline:auto; }
+
+/* ── Loader ─────────────────────────────────────────── */
+#loader{
+  position:fixed; inset:0; z-index:var(--z-loader);
+  background:var(--cold);
+  display:grid; place-content:center; gap:1.1rem;
+  transition:opacity .7s var(--ease), visibility .7s;
+}
+#loader[hidden]{ opacity:0; visibility:hidden; display:grid; }
+.load-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.7rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--muted); text-align:center;
+}
+.load-bar{ width:min(70vw,17rem); height:1px; background:var(--hair); overflow:hidden; }
+.load-fill{ height:100%; width:0%; background:var(--copper); transition:width .25s linear; }
+
+/* ── Header ─────────────────────────────────────────── */
+header{
+  position:fixed; top:0; left:0; right:0; z-index:var(--z-header);
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem;
+  padding:1.4rem clamp(1.5rem,4vw,3rem);
+}
+/* Content passes under the header — give it a falloff so both stay legible. */
+header::before{
+  content:''; position:absolute; inset:0 0 -2.5rem 0; z-index:-1;
+  background:linear-gradient(to bottom,
+    oklch(0.12 0.02 198 / .94) 0%,
+    oklch(0.12 0.02 198 / .62) 45%,
+    oklch(0.12 0.02 198 / 0) 100%);
+  pointer-events:none;
+}
+.mark{
+  font-family:'Fraunces',serif;
+  font-weight:700; font-size:1.05rem;
+  letter-spacing:-.02em;
+  text-decoration:none;
+}
+.mark span{ color:var(--copper); }
+
+.readout{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; letter-spacing:.1em;
+  color:var(--muted);
+  display:flex; align-items:baseline; gap:.5rem;
+}
+.readout b{
+  font-weight:500;
+  font-size:.95rem;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+
+.call{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; letter-spacing:.08em;
+  color:var(--ink);
+  text-decoration:none;
+  border:1px solid var(--hair);
+  padding:.55rem .95rem;
+  border-radius:1.5rem;
+  transition:border-color .25s var(--ease), background-color .25s var(--ease);
+  white-space:nowrap;
+}
+.call:hover{ border-color:var(--copper); background:oklch(0.735 0.132 56 / .11); }
+
+/* ── Temperature rail ───────────────────────────────── */
+.rail{
+  position:fixed; right:clamp(1rem,2.5vw,2rem); top:50%;
+  transform:translateY(-50%);
+  z-index:var(--z-rail);
+  display:flex; flex-direction:column; gap:1.15rem;
+  align-items:flex-end;
+}
+.rail-cap{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.58rem; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--muted); writing-mode:vertical-rl;
+  margin-bottom:.4rem; opacity:.7;
+}
+.tick{
+  display:flex; align-items:center; gap:.6rem;
+  background:none; border:0; padding:0; cursor:pointer;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.68rem; letter-spacing:.06em;
+  color:var(--muted);
+  font-variant-numeric:tabular-nums;
+  transition:color .3s var(--ease);
+}
+.tick i{
+  display:block; width:14px; height:1px; background:currentColor;
+  transition:width .35s var(--ease), background-color .3s var(--ease);
+}
+.tick[data-on="1"]{ color:var(--copper); }
+.tick[data-on="1"] i{ width:26px; }
+.tick:hover{ color:var(--ink); }
+
+/* ── Film: pinned canvas, text scrolls over ─────────── */
+.film{ position:relative; }
+.stage{
+  position:sticky; top:0;
+  height:100svh;
+  overflow:hidden;
+}
+#seq{ display:block; width:100%; height:100%; }
+.vignette{
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(to bottom, oklch(0.14 0.026 196 / .52) 0%, transparent 16%,
+                    transparent 78%, oklch(0.14 0.026 196 / .55) 100%),
+    linear-gradient(to right, transparent 88%, oklch(0.14 0.026 196 / .38) 100%);
+}
+
+/* Sticky .stage consumes 100svh of flow — pull the beats back up over it. */
+.beats{ position:relative; margin-top:-100svh; }
+.beat{
+  min-height:100svh;
+  display:flex; align-items:center;
+  padding-block:6rem;
+}
+.beat-inner{
+  width:min(100% - 3rem, 34rem);
+  margin-left:clamp(1.5rem,7vw,6rem);
+}
+
+.temp{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; letter-spacing:.14em;
+  color:var(--copper);
+  font-variant-numeric:tabular-nums;
+  display:block; margin-bottom:1.1rem;
+}
+.beat h2{
+  font-family:'Fraunces',serif;
+  font-weight:500;
+  font-size:clamp(1.9rem,4.6vw,3.1rem);
+  line-height:1.12;
+  letter-spacing:-.028em;
+  text-wrap:balance;
+  margin-bottom:1rem;
+}
+.beat p{
+  color:oklch(0.895 0.014 82);
+  font-size:clamp(1rem,1.4vw,1.09rem);
+  max-width:44ch;
+  text-wrap:pretty;
+}
+
+.panel{
+  background:oklch(0.12 0.02 198 / .38);
+  border:1px solid oklch(1 0 0 / .085);
+  padding:1.85rem 2.05rem 1.95rem;
+  backdrop-filter:blur(2.5px);
+  -webkit-backdrop-filter:blur(2.5px);
+}
+.w{ display:inline-block; will-change:transform,opacity; }
+
+/* Hero sits inside the film so the first frame is the backdrop */
+.hero{
+  min-height:100svh;
+  display:flex; align-items:flex-end;
+  padding:0 0 clamp(4rem,10vh,7rem);
+  
+}
+.hero-inner{
+  width:min(100% - 3rem, 44rem);
+  margin-left:clamp(1.5rem,7vw,6rem);
+}
+.hero h1{
+  font-family:'Fraunces',serif;
+  font-weight:700;
+  font-size:clamp(2.1rem,5.4vw,3.9rem);
+  line-height:1.04;
+  letter-spacing:-.032em;
+  text-wrap:balance;
+  margin-bottom:1.4rem;
+}
+.hero p{
+  font-size:clamp(1.02rem,1.6vw,1.18rem);
+  color:oklch(0.885 0.016 82);
+  max-width:46ch;
+  text-wrap:pretty;
+}
+.scroll-cue{
+  margin-top:2.6rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.66rem; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--muted);
+  display:flex; align-items:center; gap:.7rem;
+}
+.scroll-cue i{
+  width:34px; height:1px; background:var(--copper);
+  transform-origin:left;
+  animation:draw 2.4s var(--ease) infinite;
+}
+@keyframes draw{ 0%,100%{transform:scaleX(.35);opacity:.5} 50%{transform:scaleX(1);opacity:1} }
+
+/* ── Service tag (signature) ────────────────────────── */
+.record{ padding:clamp(6rem,14vh,10rem) 0; position:relative; }
+.record-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));
+  gap:clamp(2.5rem,6vw,5rem);
+  align-items:center;
+}
+.record-head{ max-width:34rem; }
+.record-head h2{
+  font-family:'Fraunces',serif; font-weight:500;
+  font-size:clamp(1.8rem,4vw,2.7rem);
+  line-height:1.14; letter-spacing:-.026em; text-wrap:balance;
+  margin-bottom:.9rem;
+}
+.record-head p{ color:oklch(0.885 0.014 82); max-width:50ch; text-wrap:pretty; }
+
+.tag-shell{ display:flex; justify-content:center; }
+.tag{
+  background:var(--tag);
+  color:var(--tag-ink);
+  width:min(100%,27rem);
+  padding:1.9rem 1.9rem 2.2rem;
+  border-radius:2px;
+  transform:rotate(-1.1deg);
+  box-shadow:0 26px 60px oklch(0.12 0.02 192 / .55);
+  position:relative;
+}
+.tag::before{
+  content:''; position:absolute; top:.85rem; left:50%; translate:-50% 0;
+  width:34px; height:8px; border-radius:4px;
+  background:oklch(0.30 0.035 60 / .22);
+}
+.tag-title{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.6rem; letter-spacing:.2em; text-transform:uppercase;
+  text-align:center; margin:.9rem 0 1.5rem;
+  color:oklch(0.44 0.04 60);
+}
+.tag ol{ list-style:none; }
+.tag li{
+  display:flex; justify-content:space-between; align-items:baseline; gap:1rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.79rem;
+  padding:.5rem 0;
+  border-bottom:1px solid oklch(0.30 0.035 60 / .17);
+  font-variant-numeric:tabular-nums;
+}
+.tag li span:last-child{ letter-spacing:.1em; }
+.tag li[data-now]{
+  color:oklch(0.46 0.15 42);
+  font-weight:500;
+}
+.tag-foot{
+  margin-top:1.4rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.62rem; letter-spacing:.09em;
+  color:oklch(0.48 0.04 60);
+  text-align:center;
+}
+
+/* ── Close ──────────────────────────────────────────── */
+.close{ padding:clamp(5rem,12vh,9rem) 0 clamp(4rem,9vh,6rem); }
+.close-grid{
+  display:grid; gap:clamp(2.5rem,5vw,5rem);
+  grid-template-columns:repeat(auto-fit,minmax(17rem,1fr));
+  align-items:start;
+}
+.close h2{
+  font-family:'Fraunces',serif; font-weight:500;
+  font-size:clamp(2rem,4.6vw,3rem);
+  line-height:1.1; letter-spacing:-.028em; text-wrap:balance;
+}
+.close p{ color:oklch(0.885 0.014 82); max-width:42ch; margin-top:1rem; text-wrap:pretty; }
+.dial{
+  display:inline-flex; align-items:baseline; gap:.6rem;
+  font-family:'Fraunces',serif; font-weight:700;
+  font-size:clamp(1.6rem,3.4vw,2.3rem);
+  letter-spacing:-.02em;
+  color:var(--copper);
+  text-decoration:none;
+  margin-top:.4rem;
+  transition:color .25s var(--ease);
+}
+.dial:hover{ color:var(--ink); }
+.dial small{
+  font-family:'JetBrains Mono',monospace; font-weight:400;
+  font-size:.64rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--muted);
+}
+.facts{ display:grid; gap:1.1rem; }
+.fact{
+  display:flex; gap:1rem; align-items:baseline;
+  border-top:1px solid var(--hair);
+  padding-top:1rem;
+}
+.fact dt{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.64rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--muted); flex:0 0 8.5rem;
+}
+.fact dd{ font-size:.96rem; }
+
+footer{
+  border-top:1px solid var(--hair);
+  padding:2rem 0 3rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.66rem; letter-spacing:.09em;
+  color:var(--muted);
+  display:flex; flex-wrap:wrap; gap:.6rem 2rem; justify-content:space-between;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width:820px){
+  .rail{ display:none; }
+  .beat-inner, .hero-inner{
+    margin-inline:1.5rem; width:calc(100% - 3rem);
+  }
+  .readout{ display:none; }
+}
+@media (max-width:460px){
+  .tag{ padding:1.5rem 1.2rem 1.8rem; }
+  .fact{ flex-direction:column; gap:.25rem; }
+  .fact dt{ flex:none; }
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+  .stage{ position:relative; height:70svh; }
+  .film{ height:auto !important; }
+  .beats{ margin-top:0; }
+  .w,.rev,.tag li,.fact,.beat-inner,.hero-inner,.temp{
+    opacity:1 !important; transform:none !important; visibility:visible !important; }
+  .beat{ min-height:auto; padding-block:3.5rem; }
+  .scroll-cue i{ animation:none; }
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="load-label">Reading service record</div>
+  <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+  <div class="load-label" id="loadPct" style="opacity:.6">0%</div>
+</div>
+
+<header>
+  <a class="mark" href="#top">Tenth<span>.</span></a>
+  <div class="readout" aria-hidden="true">
+    <span>Thermostat</span><b id="thermo">41°F</b>
+  </div>
+  <a class="call" href="tel:+18005550142">(800) 555-0142</a>
+</header>
+
+<nav class="rail" aria-label="Jump to point in the call">
+  <span class="rail-cap">Thermostat</span>
+  <button class="tick" data-to="0.02"><i></i>41°</button>
+  <button class="tick" data-to="0.30"><i></i>47°</button>
+  <button class="tick" data-to="0.58"><i></i>58°</button>
+  <button class="tick" data-to="0.88"><i></i>68°</button>
+</nav>
+
+<main id="top">
+
+  <section class="film" id="film">
+    <div class="stage">
+      <canvas id="seq"></canvas>
+      <div class="vignette"></div>
+    </div>
+
+    <div class="beats">
+
+      <div class="hero">
+        <div class="hero-inner panel">
+          <h1 data-split>Someone has kept this house warm since 1987.</h1>
+          <p data-split>Her furnace carries a paper tag with nine names on it. At 4:12 on the coldest morning of the year, we came to add the tenth.</p>
+          <div class="scroll-cue"><i></i> Scroll to follow the call</div>
+        </div>
+      </div>
+
+      <section class="beat" aria-labelledby="b1">
+        <div class="beat-inner panel">
+          <span class="temp">41°F · 04:12</span>
+          <h2 id="b1" data-split>The thermostat had stopped answering.</h2>
+          <p data-split>Twenty-three degrees outside. A ninety-two-year-old woman, three blankets, and a house that had been quietly losing heat since midnight. She apologised for calling so early. They always do.</p>
+        </div>
+      </section>
+
+      <section class="beat" aria-labelledby="b2">
+        <div class="beat-inner panel">
+          <span class="temp">47°F · 04:51</span>
+          <h2 id="b2" data-split>The panel tells the truth if you ask in order.</h2>
+          <p data-split>Capacitor, flame sensor, pressure switch. Most failures announce themselves to anyone patient enough to read the sequence instead of guessing at it.</p>
+        </div>
+      </section>
+
+      <section class="beat" aria-labelledby="b3">
+        <div class="beat-inner panel">
+          <span class="temp">58°F · 06:20</span>
+          <h2 id="b3" data-split>Heat does not arrive all at once.</h2>
+          <p data-split>It moves through a house the way trust does — slowly, one room outward, the far corners last. You do not leave until the far corners are warm.</p>
+        </div>
+      </section>
+
+      <section class="beat" aria-labelledby="b4">
+        <div class="beat-inner panel">
+          <span class="temp">68°F · 07:40</span>
+          <h2 id="b4" data-split>By breakfast she had her kitchen back.</h2>
+          <p data-split>Then we showed her which panel to open, what the flashing light counts mean, and how to tell the difference between a furnace that is working hard and one that is in trouble.</p>
+        </div>
+      </section>
+
+    </div>
+  </section>
+
+  <section class="record">
+    <div class="wrap record-grid">
+      <div class="record-head rev">
+        <h2 data-split>Every furnace keeps a record of who showed up.</h2>
+        <p data-split>It is a paper tag inside the door. No one designed it to be meaningful. Four decades later it is the only honest review a heating company ever gets.</p>
+      </div>
+      <div class="tag-shell">
+        <div class="tag rev">
+          <div class="tag-title">Service Record — Unit 4412-G</div>
+          <ol>
+            <li><span>11 · 1987</span><span>R.M.</span></li>
+            <li><span>02 · 1991</span><span>R.M.</span></li>
+            <li><span>12 · 1996</span><span>D.A.</span></li>
+            <li><span>01 · 2003</span><span>D.A.</span></li>
+            <li><span>10 · 2008</span><span>J.P.</span></li>
+            <li><span>03 · 2014</span><span>J.P.</span></li>
+            <li><span>11 · 2019</span><span>S.O.</span></li>
+            <li><span>09 · 2023</span><span>S.O.</span></li>
+            <li><span>01 · 2025</span><span>T.R.</span></li>
+            <li data-now><span>02 · 2026</span><span>— us</span></li>
+          </ol>
+          <div class="tag-foot">Keep this tag with the unit</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="close">
+    <div class="wrap">
+      <div class="close-grid">
+        <div>
+          <h2 data-split>We answer at four in the morning.</h2>
+          <p data-split>No dispatch fee on no-heat calls between November and March. If we cannot restore heat the same day, we bring loaner units and we do not charge for them.</p>
+          <a class="dial" href="tel:+18005550142">(800) 555-0142 <small>Seven days</small></a>
+        </div>
+        <dl class="facts">
+          <div class="fact"><dt>Response</dt><dd>Under three hours on no-heat, year round.</dd></div>
+          <div class="fact"><dt>Technicians</dt><dd>NATE-certified, background-checked, paid hourly — never on commission.</dd></div>
+          <div class="fact"><dt>Quotes</dt><dd>Written before work begins. The number does not move.</dd></div>
+          <div class="fact"><dt>Service area</dt><dd>Within 40 miles of the county line.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <footer class="wrap">
+    <span>Tenth Heating &amp; Air · Lic. #HV-441290</span>
+    <span>Emergency heat, seven days</span>
+  </footer>
+
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  var TOTAL = 145;
+  var PAD   = 3;
+  var canvas = document.getElementById('seq');
+  var ctx    = canvas.getContext('2d', { alpha:false });
+  var film   = document.getElementById('film');
+  var loader = document.getElementById('loader');
+  var fill   = document.getElementById('loadFill');
+  var pct    = document.getElementById('loadPct');
+  var thermo = document.getElementById('thermo');
+  var ticks  = Array.prototype.slice.call(document.querySelectorAll('.tick'));
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var images = new Array(TOTAL);
+  var loaded = 0;
+  var ready  = false;
+
+  var target = 0;      // scroll-derived frame index (float)
+  var eased  = 0;      // lerped index actually drawn
+  var lastDrawn = -1;
+
+  /* Where frames load from. Default '' = the copy shipped in this repo,
+     so a fresh clone always works with no broken links and no network.
+     Set window.ASSET_BASE (see README) to a Gumlet image-CDN origin to
+     serve the same paths as optimized WebP/AVIF instead. */
+  var ASSET_BASE = (typeof window.ASSET_BASE === 'string') ? window.ASSET_BASE : '';
+
+  function src(i){
+    return ASSET_BASE + 'frames/f_' + String(i + 1).padStart(PAD, '0') + '.jpg';
+  }
+
+  /* ── Canvas sizing (DPR-aware, cover fit) ── */
+  function size(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var r = canvas.getBoundingClientRect();
+    canvas.width  = Math.round(r.width  * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    lastDrawn = -1;
+    paint(eased);
+  }
+
+  function paint(idx){
+    var i = Math.max(0, Math.min(TOTAL - 1, Math.round(idx)));
+    var img = images[i];
+    if(!img || !img.complete || !img.naturalWidth) return;
+    if(i === lastDrawn) return;
+    lastDrawn = i;
+
+    var cw = canvas.width, ch = canvas.height;
+    var ir = img.naturalWidth / img.naturalHeight;
+    var cr = cw / ch;
+    var dw, dh, dx, dy;
+    if(ir > cr){ dh = ch; dw = ch * ir; dx = (cw - dw) / 2; dy = 0; }
+    else       { dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2; }
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  /* ── Progress through the pinned film section ── */
+  function progress(){
+    var rect = film.getBoundingClientRect();
+    var span = rect.height - window.innerHeight;
+    if(span <= 0) return 0;
+    return Math.max(0, Math.min(1, -rect.top / span));
+  }
+
+  /* ── Split marked copy into per-word spans, once. ── */
+  function split(el){
+    if(el.dataset.done) return;
+    el.innerHTML = el.innerHTML.replace(/(<[^>]+>)|([^\s<]+)/g,
+      function(m, tag, word){ return tag ? tag : '<span class="w">' + word + '</span>'; });
+    el.dataset.done = '1';
+  }
+  [].forEach.call(document.querySelectorAll('[data-split]'), split);
+
+  /* ── Motion is GSAP ScrollTrigger ────────────────────────────── */
+  function readout(p){
+    document.documentElement.style.setProperty('--heat', p.toFixed(3));
+    thermo.textContent = Math.round(41 + p * 27) + '°F';
+    for(var i = 0; i < ticks.length; i++){
+      var at = parseFloat(ticks[i].dataset.to);
+      var next = ticks[i+1] ? parseFloat(ticks[i+1].dataset.to) : 1.01;
+      ticks[i].dataset.on = (p >= at - 0.02 && p < next - 0.02) ? '1' : '0';
+    }
+  }
+
+  function build(){
+    gsap.registerPlugin(ScrollTrigger);
+    var mm = gsap.matchMedia();
+
+    mm.add('(prefers-reduced-motion: no-preference)', function(){
+      var f = { i: 0 };
+      gsap.to(f, {
+        i: TOTAL - 1, ease: 'none',
+        onUpdate: function(){ paint(f.i); },
+        scrollTrigger: {
+          trigger: film, start: 'top top', end: 'bottom bottom', scrub: 0.5,
+          onUpdate: function(self){ readout(self.progress); }
+        }
+      });
+
+      gsap.utils.toArray('.hero-inner, .beat-inner').forEach(function(box){
+        var words = box.querySelectorAll('.w');
+        var temp  = box.querySelector('.temp');
+        var tl = gsap.timeline({ scrollTrigger: {
+          trigger: box.closest('.hero, .beat'),
+          start: 'top bottom', end: 'bottom top', scrub: 0.7
+        }});
+        tl.fromTo(box, { autoAlpha:0, y:26 }, { autoAlpha:1, y:0, duration:0.55, ease:'power2.out' }, 0);
+        if(temp) tl.fromTo(temp, { autoAlpha:0, x:-14 }, { autoAlpha:1, x:0, duration:0.45 }, 0.10);
+        tl.fromTo(words, { autoAlpha:0, y:20 },
+          { autoAlpha:1, y:0, duration:0.6, ease:'power2.out', stagger:{ each:0.045 } }, 0.15);
+        tl.to({}, { duration:1.15 });
+        tl.to(words, { autoAlpha:0, y:-14, duration:0.45, stagger:{ each:0.02 } }, '>');
+        tl.to(box,   { autoAlpha:0, y:-22, duration:0.5 }, '<0.05');
+      });
+
+      gsap.utils.toArray('.rev').forEach(function(el){
+        var words = el.querySelectorAll('.w');
+        var trig  = { trigger: el, start: 'top 86%', once: true };
+        if(words.length){
+          gsap.from(words, { autoAlpha:0, y:18, duration:0.75, ease:'power3.out',
+            stagger:0.035, scrollTrigger:trig });
+        } else {
+          gsap.from(el, { autoAlpha:0, y:22, duration:0.8, ease:'power3.out', scrollTrigger:trig });
+        }
+      });
+
+      gsap.from('.tag', { autoAlpha:0, y:28, rotation:-2.6, duration:0.9, ease:'power3.out',
+        scrollTrigger:{ trigger:'.tag', start:'top 84%', once:true }});
+      gsap.from('.tag li', { autoAlpha:0, x:-18, duration:0.55, ease:'power2.out',
+        stagger:0.075, scrollTrigger:{ trigger:'.tag', start:'top 78%', once:true }});
+      gsap.from('.fact', { autoAlpha:0, y:20, duration:0.6, ease:'power2.out',
+        stagger:0.09, scrollTrigger:{ trigger:'.facts', start:'top 86%', once:true }});
+    });
+
+    mm.add('(prefers-reduced-motion: reduce)', function(){ paint(0); readout(0); });
+  }
+
+  function jumpTo(f){
+    f = Math.max(0, Math.min(1, f));
+    var r = film.getBoundingClientRect();
+    window.scrollTo(0, window.scrollY + r.top + (r.height - window.innerHeight) * f);
+    if(window.ScrollTrigger) ScrollTrigger.update();
+  }
+  window.filmScrub = { jumpTo: jumpTo, sync: function(){ if(window.ScrollTrigger) ScrollTrigger.update(); } };
+
+  function bump(){
+    loaded++;
+    var pr = loaded / TOTAL;
+    fill.style.width = (pr*100).toFixed(1) + '%';
+    pct.textContent = Math.round(pr*100) + '%';
+    if(loaded === TOTAL && !ready) start();
+  }
+
+  function start(){
+    ready = true; loader.hidden = true;
+    layout(); size(); paint(0);
+    build(); ScrollTrigger.refresh();
+    var at = new URLSearchParams(location.search).get('at');
+    if(at !== null && !isNaN(parseFloat(at))) jumpTo(parseFloat(at));
+  }
+
+  for(var i = 0; i < TOTAL; i++){
+    (function(n){
+      var img = new Image();
+      img.decoding = 'async';
+      img.onload  = function(){ if(n === 0){ size(); paint(0); } bump(); };
+      img.onerror = bump;
+      img.src = src(n);
+      images[n] = img;
+    })(i);
+  }
+
+  function layout(){ film.style.height = reduce ? 'auto' : '520vh'; }
+  layout();
+  window.addEventListener('resize', function(){
+    layout(); size(); if(window.ScrollTrigger) ScrollTrigger.refresh();
+  });
+
+  ticks.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var f = parseFloat(btn.dataset.to);
+      var r = film.getBoundingClientRect();
+      window.scrollTo({ top: window.scrollY + r.top + (r.height - window.innerHeight) * f, behavior:'smooth' });
+    });
+  });
+
+  setTimeout(function(){ if(!ready) start(); }, 9000);
+})();
+</script>
+</body>
+</html>

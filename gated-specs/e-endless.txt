@@ -1,0 +1,55 @@
+Recreate this exact website pixel-perfectly using TanStack Start v1 + React 19 + Vite +
+Tailwind CSS v4 + framer-motion. Single landing page on route "/". Background is pure black
+(#000), text Inter Tight / Inter. No backend, no database.
+
+## 1. Stack & assets
+Tailwind v4 CSS-first config in `src/styles.css` (no tailwind.config.js). Lenis for buttery
+inertia scrolling, wired in from the start. All images/icons/bars are referenced directly by
+URL from `https://qclay.design/lovable/codeba/` — not downloaded — per the source spec's own
+instruction, EXCEPT the hero background, described below.
+
+## 2. Layout (top to bottom)
+- **Header**: rotating-star logo, nav (Product active / Our story / Pricing / Career), white
+  "Join beta" pill, mobile hamburger overlay.
+- **MacBook-window hero**: a dark (`#0F0D0F`) rounded card containing a toolbar (5 tool icons,
+  a blue "Share" button, two overlapping avatar rings), then a hero panel with a full-bleed
+  background — **a real autoplaying/looping/muted video**, not the original static image — a
+  giant per-word-rise H1 ("The easiest way to build your design products."), a subheading, a
+  search-style prompt input with a typing placeholder animation and a "Generate" button, and a
+  465px-tall dashboard preview (a left "Layers/Assets" sidebar with a nav list, and a right grid
+  of 5 animated stat/preview cards — a beige card with an animated count-up to 93% and a
+  left-to-right clip-path line reveal, a pink "8000 Components" count-up card, and three image
+  cards).
+- **Features section**: a word-reveal section header + CTA, then 3 feature cards (an assistant
+  card with an animated tool list, an "AI helps to generate images free" card with a person
+  photo and a "Regenerate" button, and a "search engine optimization" card with 6 animated bar
+  graphs and a count-up to 27,000 visitors).
+- **Stats section**: two count-up stats (47%, 63%) plus a "multiplayer" card where the phrase
+  "build marketing" reveals via a synced white-sweep-bar + black-text clip-path animation, with
+  a scripted cursor move-and-label animation.
+- **"Mad for designer by developers"** section: copy + two buttons, and a second MacBook-window
+  card containing a "Code and design togather" panel (the same background treatment, reusing the
+  *original* hotlinked background image — not swapped, since only the primary hero gets the
+  video treatment) with a character-by-character CSS-block typewriter effect.
+- **Pill tags** (2 rows × 3 colored pills), **Plans and Pricing** (2 plans + a partners footer
+  with 3 hotlinked logo marks), **Updates and news** (image card + 3-paragraph announcement),
+  and a **footer** (animated letter-stagger wordmark, 2 link columns, a long word-staggered
+  privacy paragraph).
+
+## 3. Hero video generation
+The original hero background (`Bg.png`) is an abstract 3D-rendered close-up of faceted glossy
+white/gray geometric surfaces, sitting almost entirely behind an 80%-black overlay. It was
+regenerated fresh with Higgsfield: a matching still (`nano_banana_pro`) animated with
+`kling3_0` using the same frame as both start and end reference, producing an extremely subtle,
+seamless light-drift loop across the facets — visually consistent with the original but a real
+generated video rather than a static image.
+
+## 4. Verification
+Header/toolbar icons rise/pop in on load with staggered delays; the hero H1/subheading rise
+word-by-word over the looping video background; the search bar reveals via a left-to-right
+clip-path wipe with a typing placeholder; the dashboard cards animate in with count-ups and a
+clip-path line reveal; every further section reveals on scroll-into-view (word-by-word headings,
+staggered pills/cards); the "build marketing" phrase's white-sweep/black-text-reveal stays in
+sync; the scripted cursor animation in the stats card follows its exact keyframed path; the CSS
+typewriter block types out character-by-character with a pulsing caret; the whole page scrolls
+with Lenis's buttery inertia easing rather than native stepped scroll.

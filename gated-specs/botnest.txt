@@ -1,0 +1,497 @@
+Build "BotNest" — a dark, lime-accented AI-agent SaaS landing page. Vite + React 18 +
+TypeScript + Tailwind CSS. Nineteen sections, each revealed by its own IntersectionObserver
+(no scroll-scrubbed video on this page — the motion is all opacity/translate reveals plus a
+handful of self-driving animations). No external image or video assets: every visual is CSS,
+inline SVG and lucide-react icons.
+
+===============================================================================
+STACK & FILES
+===============================================================================
+Vite + React + TypeScript + Tailwind (default config, no theme extension besides two font
+vars). Path alias '@' -> './src'. Dependencies: framer-motion, lucide-react, clsx,
+tailwind-merge (a cn() helper in src/lib/utils.ts — clsx + tailwind-merge). No backend, no
+Supabase calls actually used on the page despite being a dependency.
+
+Files: src/main.tsx, src/App.tsx, src/index.css, src/lib/utils.ts, src/hooks/use-mobile.ts,
+and one component per section under src/components/. Two components carry a co-located CSS
+file for keyframes/3D transforms that don't map cleanly to Tailwind utilities:
+AgentCards.css, ExperienceSection.css.
+
+App.tsx renders, inside a div with bg-[var(--bg-primary)] text-[var(--text-primary)]
+overflow-x-hidden: SiteHeader, then <main> holding ParallaxHero, LogoTimelineSection, a
+hidden md:block AgentCards / md:hidden MobileAgentCardsSection pair, FeatureSection,
+ExperienceSection, DesignSection, FeatureShowcaseSection, AgentsIntegrationSection,
+TestingPlaybookSection, KnowledgeAgentsSection, StressTestScenariosSection, OptimizeSection,
+PostLaunchSection, TrackWhatMattersSection, ClientStories, TestimonialMetricsSection,
+HowItWorksSection, ScheduleDemoSection — then FooterSection outside <main>.
+
+===============================================================================
+DESIGN TOKENS (src/index.css)
+===============================================================================
+Google Fonts import: Space Grotesk (300-700) for --font-display, Inter (300-900) for
+--font-body. .font-display sets font-family: 'Space Grotesk', sans-serif; body defaults to
+Inter.
+
+:root{
+  --bg-primary:#0a0b0f; --bg-secondary:#111318; --bg-card:#16181f; --bg-elevated:#1c1f27;
+  --border-subtle:rgba(255,255,255,.06); --border-default:rgba(255,255,255,.1);
+  --border-strong:rgba(255,255,255,.18);
+  --text-primary:#f0f1f3; --text-secondary:#a0a4ad; --text-tertiary:#6b6f78;
+  --accent:#c4f542; --accent-hover:#d4ff5e; --accent-dim:rgba(196,245,66,.12);
+  --accent-glow:rgba(196,245,66,.25);
+  --warm:#ff8c42; --warm-dim:rgba(255,140,66,.12);
+}
+html{scroll-behavior:smooth} body{background:var(--bg-primary);color:var(--text-primary);
+overflow-x:hidden} ::selection{background:var(--accent);color:var(--bg-primary)}
+::-webkit-scrollbar{width:6px;height:6px} thumb: var(--border-strong), hover
+var(--text-tertiary), track var(--bg-secondary).
+
+Utility classes used everywhere, define them once:
+  .gradient-text{background:linear-gradient(135deg,#c4f542,#d4ff5e);-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;background-clip:text}
+  .glass{background:rgba(22,24,31,.6);backdrop-filter:blur(20px);border:1px solid var(--border-default)}
+  .glass-strong{background:rgba(16,17,23,.85);backdrop-filter:blur(24px);border:1px solid var(--border-default)}
+  .accent-glow{box-shadow:0 0 80px var(--accent-glow)}
+  .section-padding{padding-inline:1.5rem} -> 2rem at md, 4rem at lg
+  .grid-bg{background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:60px 60px}
+  .noise-overlay::after{position:absolute;inset:0;pointer-events:none;
+    background-image:url("data:image/svg+xml,...feTurbulence fractalNoise baseFrequency 0.9...");
+    opacity:.04}  (an inline SVG turbulence filter — self-contained, no asset file)
+  .text-balance{text-wrap:balance}
+
+Keyframes (all in index.css):
+  @keyframes marquee{0%{translateX(0)}100%{translateX(-50%)}}  .animate-marquee 30s linear infinite
+  @keyframes float{0%,100%{translateY(0)}50%{translateY(-12px)}}  .animate-float 6s ease-in-out infinite
+  @keyframes pulse-glow{0%,100%{opacity:.4}50%{opacity:.8}}  .animate-pulse-glow 3s ease-in-out infinite
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}  (defined, unused on page)
+
+===============================================================================
+RECURRING PATTERNS — implement once, reuse everywhere
+===============================================================================
+REVEAL-ON-SCROLL: nearly every section component follows the identical shape —
+  const ref = useRef<HTMLDivElement>(null); const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const observer = new IntersectionObserver((entries) => entries.forEach(e => {
+      if (e.isIntersecting) { setVisible(true); observer.unobserve(e.target) }
+    }), { threshold: 0.15 });   // 0.1-0.3 depending on section, see below
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+Then each child in the section transitions opacity 0->1 and translateY/X 20-24px->0 over
+600-1000ms, staggered with transitionDelay: `${index * N}ms` (N is 80-150ms depending on
+section — see per-section notes). This fires once, on first intersection, and never resets.
+
+AGENT-ORB icon treatment (AgentCards.css): a 56x56 rounded-2xl box (smaller 40/48px variants
+elsewhere) with a ::before layer at inset:0 carrying a 135deg gradient from --accent-dim to
+transparent at 60%, opacity .6 — a soft interior glow behind the lucide icon. Reused as
+"agent-orb" across AgentCards, FeatureSection, FeatureShowcaseSection, PostLaunchSection,
+StressTestScenariosSection, TestimonialMetricsSection, ParallaxHero and TrackWhatMattersSection
+at different sizes via w-*/h-*/rounded-* overrides.
+
+METRIC BAR: .agent-metric-bar{height:4px;border-radius:2px;background:var(--bg-elevated);
+overflow:hidden} .agent-metric-bar-fill{height:100%;border-radius:2px;
+background:linear-gradient(90deg,var(--accent),var(--accent-hover));
+transition:width 1s cubic-bezier(.4,0,.2,1)} — width goes from 0% to the metric value only
+once `visible` flips true, so the bar animates in.
+
+GLASS PILL EYEBROW: every section opens with the same eyebrow badge —
+<div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass mb-5">
+  <Icon className="w-3.5 h-3.5 text-[var(--accent)]" />
+  <span className="text-xs font-medium text-[var(--text-secondary)]">Label</span>
+</div>
+
+===============================================================================
+1. SITE HEADER (src/components/SiteHeader.tsx)
+===============================================================================
+fixed top-0 inset-x-0 z-50, transitions from transparent/no border to glass-strong +
+border-[var(--border-subtle)] once window.scrollY > 20. Row: h-16 (md:h-18), section-padding,
+flex items-center justify-between.
+Left: Bot icon (lucide) in a 9x9 rounded-xl bg-[var(--accent)] box, group-hover:scale-110,
+then "BotNest" in font-display text-lg font-semibold.
+Center nav (hidden md:flex): Agents #agents, Features #features, Playbook #playbook,
+Stories #stories, How it works #how-it-works — each px-4 py-2 text-sm rounded-lg hover
+bg-[var(--bg-elevated)].
+Right (hidden md:flex): "Sign in" link, then "Book a demo" -> #schedule-demo, bg-[var(--accent)]
+text-[var(--bg-primary)] px-5 py-2.5 rounded-lg, hover bg-[var(--accent-hover)] +
+shadow-lg shadow-[var(--accent-glow)].
+Mobile: a Menu/X toggle button opens a glass-strong dropdown panel below the header with the
+same five links stacked plus the Book-a-demo button full width.
+
+===============================================================================
+2. PARALLAX HERO (src/components/ParallaxHero.tsx)
+===============================================================================
+min-h-screen flex items-center, classes grid-bg noise-overlay pt-16. Two blurred gradient
+orbs track window.scrollY via a plain scroll listener (not IntersectionObserver — this is the
+one section using raw parallax): a 500px accent-dim orb at translateY(scrollY*0.3), and a
+400px warm-dim orb at translateY(scrollY*-0.2), both blur-[100-120px] pointer-events-none.
+
+Two-column grid (lg:grid-cols-2), left column text-center lg:text-left:
+- Eyebrow pill: Sparkles icon, "AI agents that ship, test & scale".
+- <h1> via a WordsReveal component: "Deploy AI agents that actually work in production",
+  highlightWords ['work','production'] rendered with .gradient-text. font-display text-4xl
+  through xl:text-7xl, font-bold, leading-[1.05], tracking-tight, text-balance.
+- Subhead: "BotNest gives you a full team of AI agents to design, test, optimize and monitor
+  your customer experience — from first sketch to post-launch iteration."
+- Two CTAs: "Book a demo" (solid accent, ArrowRight icon that translates on hover) ->
+  #schedule-demo, and "See it in action" (glass) -> #experience with a Play icon.
+- Trust row: three small glass circles stacked -space-x-2 holding Brain/Zap/Shield icons,
+  plus "Trusted by 200+ product teams".
+
+Right column (hidden below lg): a glass rounded-2xl accent-glow card with a macOS-style
+titlebar (three colored dots #ff5f57/#febc2e/#28c840 + "botnest · live" in mono), translated
+by scrollY*0.08. Inside, three agent-status rows (Design Agent/Active/92%, Test Agent/
+Running/87%, Monitor Agent/Watching/99%), each an agent-orb + label/status + value, each
+row using `animation: float 6s ease-in-out infinite` with a staggered animationDelay
+(i*0.5s), and an agent-metric-bar filled to that percentage. A floating accent card is
+absolutely positioned -bottom-6 -left-6 with animate-float (1s delay), showing a Sparkles
+icon and "Uptime 99.98%".
+
+Bottom-center scroll indicator (hidden md:flex): "Scroll to explore" over a 20x36px pill
+outline with a small accent dot pulsing via animate-pulse-glow.
+
+WordsReveal component (src/components/WordsReveal.tsx): splits text on spaces, wraps each
+word in a span, and reveals them via a per-word IntersectionObserver (threshold 0.3) —
+opacity 0->1, translateY(4px)->0, blur-sm->blur-0, duration-700, staggered
+transitionDelay: `${delay + i*40}ms`. Words matching highlightWords (case-insensitive
+substring) get the highlightClassName (default 'gradient-text').
+
+===============================================================================
+3. LOGO TIMELINE (src/components/LogoTimelineSection.tsx)
+===============================================================================
+py-16, border-y border-[var(--border-subtle)]. "Powering conversational AI for" label
+(text-xs uppercase tracking-widest text-tertiary), then an infinitely scrolling marquee of
+eight placeholder wordmarks — Nimbus, Cartwheel, Voltline, Halcyon, Driftpoint, Mesa,
+Northwind, Kestrel — duplicated once and animated with .animate-marquee (translateX(0) to
+translateX(-50%), 30s linear infinite). Each name fades in once on IntersectionObserver
+(opacity transition, staggered 50ms). Two 80px gradient fade edges (transparent to
+bg-primary) mask the marquee's left/right clipping.
+
+===============================================================================
+4. AGENT CARDS (desktop) / MOBILE AGENT CARDS (src/components/AgentCards.tsx,
+   AgentCards.css, MobileAgentCardsSection.tsx)
+===============================================================================
+Six agents, shared data (color alternates accent/warm on desktop, not used on mobile):
+  Atlas   / Brain        / Design Agent       / "Generates conversation flows, maps intents
+    and crafts the personality of every interaction." / Flows mapped 94%, Intent coverage 88%
+  Echo    / FlaskConical / Testing Agent      / "Runs thousands of edge-case simulations
+    before launch, catching what humans miss." / Edge cases 97%, Pass rate 91%
+  Sentry  / Eye          / Monitoring Agent   / "Watches every conversation in production,
+    flagging drift and failures in real time." / Uptime 99%, Drift detect 96%
+  Muse    / Sparkles     / Optimization Agent / "Analyzes patterns and suggests improvements
+    to continuously lift performance." / Lift found 85%, Auto-tuning 78%
+  Forge   / GitBranch    / Integration Agent  / "Connects your agents to existing tools, APIs
+    and knowledge bases seamlessly." / Integrations 92%, API coverage 89%
+  Pulse   / Gauge        / Analytics Agent    / "Turns raw conversation data into clear,
+    actionable insights for your team." / Insights/day 95%, Accuracy 93%
+
+Desktop (id="agents", hidden below md): eyebrow "Meet the team", h2 "Six specialized agents.
+One unified workflow.", sub "Each agent owns a piece of the lifecycle — from design to
+deployment to ongoing optimization." Grid 1/2/3 columns, gap-5. Each card: perspective:1200px
+on the outer .agent-card wrapper, inner .agent-card-inner has transform-style:preserve-3d and
+tilts to rotateY(8deg) rotateX(4deg) translateZ(10px) on hover (a real 3D tilt, not a 2D
+scale). A .agent-card-glow absolutely-inset layer (135deg accent-dim-to-transparent gradient)
+fades in on hover. Card body: agent-orb + a pulsing ring (.agent-pulse-ring, border 1px
+accent, scales 1->1.3 fading out, 2.5s infinite) + a live status dot + "online" in mono, then
+name (font-display text-xl), role (text-xs accent mono), description, then the two metric
+bars. Cards reveal staggered 80ms via the shared IntersectionObserver pattern (threshold 0.2).
+
+Mobile (id="agents-mobile", md:hidden): a single-card swipeable carousel, no 3D tilt. Touch
+handlers on the wrapper diff touchStart/touchEnd clientX; a >40px swipe advances/retreats
+index (wrapping). Same card content as desktop minus color alternation. Below the card: prev/
+next ChevronLeft/ChevronRight glass buttons flanking six dot indicators (active dot widens to
+20px and turns accent-colored).
+
+===============================================================================
+5. FEATURE SECTION (src/components/FeatureSection.tsx)
+===============================================================================
+id="features", max-w-5xl. Eyebrow "Platform", h2 "Built for teams who ship AI experiences,
+not demos." Four rows in a border-b list, each a 3-col grid (auto / 1fr / 2fr on md) —
+agent-orb icon, title, description — separated by border-t, revealing translateY(20px)->0
+staggered 100ms (threshold 0.2):
+  Layers / Multi-agent orchestration / "Coordinate multiple AI agents on a shared canvas.
+    Each one handles a domain — design, testing, monitoring — while a central brain keeps
+    them in sync."
+  Globe / Real-time simulation / "Before you ship, run your agents through thousands of
+    realistic conversations. Catch edge cases, tone issues and dead ends before your users do."
+  Lock / Enterprise-grade security / "SOC 2 Type II, end-to-end encryption and granular
+    access controls. Your conversation data never trains shared models."
+  Cpu / Continuous optimization / "Agents don't just run — they learn. Muse analyzes every
+    interaction and proposes improvements you can approve with one click."
+
+===============================================================================
+6. EXPERIENCE SECTION (src/components/ExperienceSection.tsx, ExperienceSection.css)
+===============================================================================
+id="experience", max-w-5xl. Eyebrow "Interactive demo", h2 "See the full lifecycle in
+action.", sub "From live conversations to test results to analytics — all running on the
+same agent infrastructure."
+
+THIS IS THE ONE SELF-ANIMATING SECTION ON THE PAGE — it auto-advances independent of scroll,
+so it is worth lingering on in any preview capture. A .demo-window (max-w-3xl, rounded-xl,
+bg-secondary, 1px border) with a macOS titlebar (three colored dots, then three tab buttons
+— Live Chat/MessageSquare, Test Suite/FlaskConical, Analytics/BarChart3 — the active tab gets
+bg-card text-primary, others text-tertiary). Below, a 16:10 .experience-frame containing
+three absolutely-stacked .experience-screen layers that cross-fade via opacity (only .active
+shows), plus a 2px .experience-progress bar along the bottom edge that fills 0->100% width
+over the current screen's dwell.
+
+Auto-advance: a setInterval every 40ms increments progress by 0.5 (so ~4s per screen); at
+100 it resets progress to 0 and advances `active` to the next screen in sequence
+(chat -> testing -> analytics -> chat...). Clicking a tab jumps directly to that screen and
+resets progress. Below the frame: three small dot buttons (.experience-nav-dot, active one
+widens to 24px pill), same jump behavior.
+
+ChatScreen: four alternating chat bubbles (user right-aligned accent bg, bot left-aligned
+bg-elevated), each fading/rising in via .chat-bubble-in (opacity 0->1, translateY(8px)->0,
+staggered 150ms), plus a trailing bot "typing" bubble with three bouncing dots
+(.typing-dots, staggered 0/0.2s/0.4s, translateY(-4px) bounce). Messages:
+  user: "I need to reschedule my appointment to next week"
+  bot: "Sure! I can see you're booked for Thursday at 2pm. Would Tuesday or Wednesday next
+    week work?"
+  user: "Wednesday morning if possible"
+  bot: "Got it — Wednesday at 9:30am is available. Should I confirm that for you?"
+
+TestingScreen: header row "echo/test_run_8421" (mono) + "5 pass · 1 warn" (accent mono).
+Six test rows, each a status dot (accent=pass, warm=warn) + name + time, fading in staggered
+100ms: Greeting flow 0.3s pass, Escalation path 0.5s pass, Ambiguous intent 0.8s pass,
+Multi-turn fallback 1.2s pass, Sentiment edge case 1.5s WARN, API timeout recovery 0.9s pass.
+
+AnalyticsScreen: three stat tiles (Conversations 12.4K, Resolution 94%, CSAT 4.7) then a
+"Weekly volume" bar chart, seven bars (M T W T F S S) at heights [40,65,52,78,88,72,94]%,
+gradient fill from accent-dim to accent, rounded top.
+
+===============================================================================
+7. DESIGN SECTION (src/components/DesignSection.tsx)
+===============================================================================
+Relative overflow-hidden, a 400px accent-dim blurred orb top-right. Two-column (lg): left —
+eyebrow "Design phase", h2 "Design agents that sound like you, not like a bot.", body about
+Atlas turning rough ideas into full conversation architecture, then three steps sliding in
+from translateX(-20px), staggered 120ms:
+  PenTool / Sketch the conversation / "Atlas turns your intent map into a full conversation
+    design — branches, fallbacks and all."
+  Palette / Define the personality / "Set tone, vocabulary and emotional range. Your agent
+    stays on-brand across every interaction."
+  Workflow / Wire the flows / "Connect triggers to actions. Atlas generates the logic, you
+    approve the paths."
+Right — a glass card labeled "atlas/flow_diagram" (mono) showing a hand-built conversation
+tree: a centered "User greeting" pill, three down-arrows, three branch cards (Support/Sales/
+Info) each with two mini progress bars (accent + warm, fixed widths 70%/45%), then a
+"Fallback → Human handoff" pill. Card scales in from 0.95->1 over 1000ms once visible.
+
+===============================================================================
+8. FEATURE SHOWCASE (src/components/FeatureShowcaseSection.tsx)
+===============================================================================
+border-t, max-w-7xl. Eyebrow "Platform features", h2 "Everything you need to run AI agents
+like a product team." Three cards (md:grid-cols-3), each with an agent-orb icon, a mono
+badge pill top-right, title, description, hover border-default, reveal staggered 120ms:
+  Shared agent canvas / badge "Visual" / "See all six agents on one canvas. Drag, connect
+    and rewire workflows visually."
+  Version-controlled prompts / badge "Git-style" / "Every prompt change is tracked, diffed
+    and rollback-able. Treat your AI logic like code."
+  Live A/B testing / badge "Experiment" / "Run two conversation variants side by side. Muse
+    picks the winner based on real outcomes."
+
+===============================================================================
+9. AGENTS INTEGRATION (src/components/AgentsIntegrationSection.tsx)
+===============================================================================
+overflow-hidden, a 300px warm-dim blurred orb bottom-left. Two-column, order flips on
+desktop (visual first on lg, text first on mobile). Visual: a centered accent-glow hub
+(GitBranch icon, 24x24 rounded-2xl, accent bg) with six integration chips
+(Slack/Comms, Salesforce/CRM, Postgres/Database, AWS/Cloud, Webhooks/API, GitHub/DevOps)
+placed on a circle (radius 150px) via trigonometric translate(cos*r, sin*r), each a small
+glass card, fading in staggered 100ms+300ms base delay. Dashed connector lines drawn with an
+absolutely-positioned <svg>, one <line> per chip from center to a point a quarter of the way
+out, opacity fading in with the chip.
+Text side: eyebrow "Integrations", h2 "Forge connects your agents to everything.", body
+about wiring CRMs/databases/messaging without custom code, then the six integration names as
+small pills fading in staggered 80ms, plus a static accent-bordered "+ 50 more" pill.
+
+===============================================================================
+10. TESTING PLAYBOOK (src/components/TestingPlaybookSection.tsx)
+===============================================================================
+id="playbook", max-w-5xl. Eyebrow "Testing playbook", h2 "Echo doesn't just test — it
+stress-tests.", sub about five phases of automated testing. Five stacked rows (not cards —
+flex items with a phase number gutter), each sliding in from translateX(-20px) staggered
+80ms:
+  01 Baseline validation / 247 tests / pass / "Echo runs your core conversation paths
+    against expected outcomes."
+  02 Edge case simulation / 1,840 tests / pass / "Thousands of unusual inputs, typos and
+    mixed-language phrases."
+  03 Adversarial probing / 312 tests / pass / "Simulated prompt injection, jailbreaks and
+    manipulation attempts."
+  04 Performance under load / 96 tests / WARN / "Concurrent conversation spikes and API
+    timeout recovery."
+  05 Accessibility audit / 58 tests / pass / "Screen reader compatibility, cognitive load
+    and readability."
+Status icon per row: CheckCircle2 (accent) for pass, AlertTriangle (warm) for warn, XCircle
+(#ff5f57) for fail (unused here but defined).
+
+===============================================================================
+11. KNOWLEDGE AGENTS (src/components/KnowledgeAgentsSection.tsx)
+===============================================================================
+border-t, max-w-7xl. Asymmetric grid (1fr / 1.5fr on lg), left column lg:sticky lg:top-24:
+eyebrow "Knowledge layer", h2 "Your agents know what your team knows.", body about
+documents/live data/team patterns, "No hallucinations, no stale answers." Right column:
+three source cards revealing translateY(20px)->0 staggered 120ms:
+  FileText / Documents / "PDFs, help articles, internal wikis and policy docs. Forge ingests
+    and indexes them all." / 2,400+ files
+  Link2 / Live data sources / "Connect real-time databases and APIs so agents answer with
+    current, not cached, information." / 12 connections
+  Lightbulb / Team knowledge / "Capture institutional knowledge from your team. Agents learn
+    from how your best reps handle things." / 180 patterns
+
+===============================================================================
+12. STRESS TEST SCENARIOS (src/components/StressTestScenariosSection.tsx)
+===============================================================================
+max-w-7xl. Eyebrow "Stress tests", h2 "What happens when things go wrong?" Four cards
+(sm:grid-cols-2), each: agent-orb icon + title left, a big mono metric + label right,
+description, then a 12-bar mini chart (accent gradient, heights animate in staggered
+30ms per bar + 300ms + i*100ms base). Reveal staggered 100ms (threshold 0.1):
+  Zap / Traffic spike / 10,000 concurrent chats / "Simulated Black Friday surge. Agents
+    maintained sub-200ms response times throughout." / bars [30,35,40,85,95,90,88,92,75,60,45,40]
+  AlertTriangle / API outage / 0 dropped conversations / "Backend goes down for 3 minutes.
+    Sentry detects, reroutes and recovers without user impact." / bars [60,62,65,10,5,0,0,55,60,63,61,60]
+  Globe / Multi-language / 24 languages tested / "Mixed-language inputs, code-switching and
+    regional variations all handled correctly." / bars [50,55,48,70,65,72,68,80,75,78,82,85]
+  TrendingUp / Long conversation / 47 turns, no degradation / "Extended multi-turn dialogues
+    stay coherent and on-personality across the entire session." / bars [40,45,50,55,52,58,60,62,65,68,70,72]
+
+===============================================================================
+13. OPTIMIZE SECTION (src/components/OptimizeSection.tsx)
+===============================================================================
+overflow-hidden, a 350px accent-dim blurred orb top-right. Two-column: left — eyebrow
+"Optimization", h2 "Muse doesn't just find problems — it proposes fixes.", body, then three
+before/after cards revealing translateY(20px)->0 staggered 120ms, each with a title + impact
+badge on top, then a strikethrough "before" -> ArrowUpRight -> "after" line:
+  Simplify greeting flow / "4 turns to reach intent" -> "1 turn to reach intent" / +12% completion
+  Adjust tone for escalations / "Generic empathy phrases" -> "Context-aware responses" / +8% CSAT
+  Add proactive handoff / "User asks for human" -> "Auto-detect frustration" / -23% churn
+Right — a glass card "muse/suggestions" with a pulsing status dot, "3 new" badge, then an SVG
+line+area chart (viewBox 0 0 300 120, a hand-authored polyline path from (0,90) rising to
+(300,15), animated in via stroke-dashoffset 600->0 over 1.5s plus a filled gradient area
+fading in), labeled "Performance trend (30 days) +18.2%". Below: two buttons, "Approve all"
+(solid accent) and "Review" (glass).
+
+===============================================================================
+14. POST-LAUNCH (src/components/PostLaunchSection.tsx)
+===============================================================================
+border-t, max-w-7xl. Eyebrow "Post-launch", h2 "Launch is just the beginning." Three cards
+(md:grid-cols-3), agent-orb icon, title, description, then a metric + label pair under a
+top border, staggered 120ms:
+  Eye / Real-time monitoring / "Sentry watches every conversation. Drift, failures and
+    anomalies get flagged within seconds." / < 5s detection time
+  RefreshCw / Auto-rollback / "If a new version degrades performance, Sentry reverts to the
+    last known-good config automatically." / 100% auto-recovery
+  Rocket / Continuous shipping / "Approve Muse's suggestions and they go live instantly. No
+    redeploys, no downtime." / 0 downtime deploys
+
+===============================================================================
+15. TRACK WHAT MATTERS (src/components/TrackWhatMattersSection.tsx)
+===============================================================================
+max-w-7xl, asymmetric grid (1fr / 1.3fr on lg). Left — eyebrow "Analytics", h2 "Track what
+matters, not just what's easy to count.", body about Pulse giving real-time performance
+views. Right — a glass "pulse/dashboard · Live" card, a 2/3-col grid of six metric tiles
+revealing translateY(12px)->0 staggered 80ms+300ms:
+  Activity / Active conversations / 1,247 / +12%
+  Gauge / Avg response time / 180ms / -8%
+  Users / Unique users today / 8,932 / +24%
+  Clock / Avg session length / 3m 42s / +5%
+  TrendingUp / Resolution rate / 94.2% / +3.1%
+  Gauge / Agent uptime / 99.98% / stable
+
+===============================================================================
+16. CLIENT STORIES (src/components/ClientStories.tsx)
+===============================================================================
+id="stories", max-w-7xl. Eyebrow "Client stories", h2 "Teams shipping faster, with fewer
+surprises." Three cards (md:grid-cols-3), each its own IntersectionObserver instance
+(threshold 0.15), revealing translateY(24px)->0 staggered 120ms. Each card: a two-letter
+logo badge in an accent-dim rounded box + company/industry, a blockquote, then two metric
+chips under a top border:
+  Nimbus Health / Healthtech / "BotNest cut our bot deployment from six weeks to four days.
+    Echo caught 40+ edge cases our QA team never considered." / Resolution rate +34%, Time to
+    launch 4 days / logo "NH"
+  Cartwheel / E-commerce / "We went from a brittle FAQ bot to a full conversational
+    experience. Sentry flags drift before our customers even notice." / CSAT score 4.7/5,
+    Auto-fixes 120/wk / logo "CW"
+  Voltline / Fintech / "The agents don't just monitor — they propose changes. Muse suggested
+    a flow tweak that lifted completed transactions by 18%." / Conversion +18%, Manual review
+    -60% / logo "VL"
+
+===============================================================================
+17. TESTIMONIAL METRICS (src/components/TestimonialMetricsSection.tsx)
+===============================================================================
+max-w-7xl. A bare 2/4-col grid (no heading) of four big stat cards, agent-orb icon, huge
+font-display number, label, sublabel, staggered 100ms:
+  TrendingUp / 94% / Resolution rate / across all deployed agents
+  Clock / 4 days / Average time to launch / from kickoff to production
+  Users / 12M+ / Conversations handled / monthly across all clients
+  Zap / 99.98% / Platform uptime / monitored by Sentry agent
+
+===============================================================================
+18. HOW IT WORKS (src/components/HowItWorksSection.tsx)
+===============================================================================
+id="how-it-works", border-t, max-w-5xl. Eyebrow "How it works", h2 "From idea to production
+in four steps." A vertical timeline: a 1px line at left-6 (hidden on mobile) behind four
+steps, each a rounded-xl icon node + phase label (mono) + title + description + a small
+accent-dim pill naming the responsible agent(s), revealing translateY(24px)->0 staggered
+150ms:
+  Step 01 / PenTool / Design your agent / "Tell Atlas what you need. It generates
+    conversation flows, personality and branching logic in minutes." / Atlas
+  Step 02 / FlaskConical / Test before you ship / "Echo runs thousands of simulations. Edge
+    cases, adversarial inputs, load spikes — all covered." / Echo
+  Step 03 / Rocket / Deploy with confidence / "Go live with one click. Forge handles
+    integrations, Sentry starts monitoring immediately." / Forge + Sentry
+  Step 04 / Gauge / Optimize continuously / "Muse analyzes every conversation and suggests
+    improvements. Pulse tracks the metrics that matter." / Muse + Pulse
+
+===============================================================================
+19. SCHEDULE DEMO (src/components/ScheduleDemoSection.tsx)
+===============================================================================
+id="schedule-demo", overflow-hidden, a large centered 600px accent-dim blurred orb behind
+everything. A single centered glass-strong accent-glow card (max-w-3xl, rounded-3xl), scaling
+in 0.95->1 over 1000ms: eyebrow pill "Book a demo" (accent-dim bg, accent text), h2 "See
+BotNest run your conversations.", body about a personalized live demo, then a 2-col grid of
+four checkmarked benefits (staggered 80ms+400ms):
+  "30-minute personalized walkthrough" / "See your use case on live agents" /
+  "Custom deployment roadmap" / "No commitment, no pressure"
+Then a large "Schedule your demo" button (ArrowRight, translates on hover) and a small
+"Available slots this week · Responds within 2 hours" caption.
+
+===============================================================================
+20. FOOTER (src/components/FooterSection.tsx)
+===============================================================================
+border-t, pt-16 pb-8, outside <main>. Grid (1.5fr / 3fr on lg): brand column — Bot icon logo
++ "BotNest", a one-line description, three glass social icon buttons (Twitter, Linkedin,
+Github, all href="#"). Link columns (2/4 cols): Product [Agents, Features, Playbook,
+Integrations, Pricing], Company [About, Blog, Careers, Contact], Resources [Documentation,
+API Reference, Guides, Status], Legal [Privacy, Terms, Security, SOC 2] — all href="#".
+Below: a glass newsletter bar ("Stay in the loop" + description + email input + Subscribe
+button). Bottom bar: "© 2026 BotNest, Inc. All rights reserved." left, a pulsing accent dot +
+"All systems operational" (mono) right.
+
+===============================================================================
+RESPONSIVE
+===============================================================================
+Tailwind default breakpoints only (sm/md/lg/xl), no custom values. Key collapses: AgentCards
+(desktop grid) vs MobileAgentCardsSection (swipe carousel) split at md via hidden md:block /
+md:hidden. ParallaxHero's right-column visual card is hidden below lg. section-padding scales
+1.5rem -> 2rem (md) -> 4rem (lg). Header nav/CTA collapses into a hamburger dropdown below md.
+
+===============================================================================
+ACCEPTANCE
+===============================================================================
+- No third-party image or video URLs anywhere — only the Google Fonts stylesheet and one
+  inline data-URI SVG noise texture. Nothing to swap or re-host.
+- Every section fires its IntersectionObserver reveal exactly once and never resets on
+  scroll-back.
+- The ExperienceSection demo auto-advances chat -> testing -> analytics on a ~4s cycle
+  independent of scroll position, and clicking a tab or dot jumps immediately and resets
+  the progress bar.
+- AgentCards tilt in 3D on hover (rotateY/rotateX via agent-card-inner's
+  transform-style:preserve-3d) — this is a real perspective transform, not a flat scale.
+- Mobile agent carousel responds to a horizontal swipe of more than 40px; tapping a dot
+  jumps directly to that agent.
+- Header background/border only appear after 20px of scroll; before that it's transparent
+  over the hero.
+- Zero console errors; zero external network requests besides the Google Fonts stylesheet.

@@ -1,0 +1,55 @@
+SHYEN — 24/7 support for your mind
+AI mental-wellness landing page. TanStack Start v1 + React 19 + Vite + Tailwind v4.
+
+STACK
+- Vite, React 19, TypeScript, TanStack Start/Router, Tailwind v4 (CSS-first).
+- No animation library — every transition is a plain CSS `transition`/`animation`
+  driven by inline styles, staggered with hand-computed millisecond delays, plus
+  an IntersectionObserver-based `useInView` hook (src/hooks/use-in-view.ts) for
+  scroll-triggered reveals.
+- Lenis smooth scroll (src/lib/useSmoothScroll.ts), applied by default to this
+  site's normal document scroll, wired in at the top of the index route.
+
+STRUCTURE (routes/index.tsx render order)
+Hero, CareSection, ToolkitSection, CollabLogos, ConnectedSection, ProductsSection,
+RecommendedSection, HoverSliderSection, StoriesSection, MobileSection,
+FinalCtaSection, Footer.
+
+HERO VIDEO — the one asset that was swapped
+The original template's hero used a stock clip ("Header.mp4") behind the right
+half of the hero, shown in a curtain wipe-reveal. That clip was replaced with an
+original, generated hero video so the deployed code and the showcased preview
+match exactly:
+  - Generated via Higgsfield: a still (soul_2) of a person seen from behind,
+    seated in a calm meditation pose, warm golden rim light against a dark
+    forest-green room — matching the site's `#091814`/`#EAF1C1`/`#FAFF67`
+    palette — then animated via kling3_0 using that same still as both the
+    start and end frame, for a slow, seamless breathing-motion ambient loop.
+  - Self-hosted as public/hero-video.mp4 (H.264, yuv420p, faststart) +
+    public/hero-poster.webp.
+  - Referenced in src/components/Hero.tsx in place of the original Header.mp4.
+Every other video on the page is untouched and still hotlinked to the original
+template CDN (qclay.design/lovable/shyen/...): second.mp4 (ConnectedSection),
+three.mp4 (ProductsSection), four.mp4 (RecommendedSection) — per hero-only
+asset-swap scope, only the primary hero visual was regenerated.
+
+ADAPTATION NOTE
+The original source referenced its three non-hero videos as
+`"<url>.mp4.asset.json"` constants accessed via a `.url` property (an artifact
+of the source tool's own asset-resolution pipeline). Since this project uses
+plain string URLs throughout (per its own asset-list instructions), those four
+occurrences were corrected to reference the bare `.mp4` URLs directly.
+
+NOTABLE IMPLEMENTATION DETAILS
+- Every heading in the page animates word-by-word via inline-style transitions
+  computed from a per-section timeline object (`T`), not a shared animation
+  library — each section hand-rolls its own stagger math.
+- HoverSliderSection's right-hand detail panel always renders the "Relaxation &
+  Focus" copy regardless of which of the 4 hover items is active (only the
+  panel's own inner list/title swap) — reproduced verbatim from the source.
+- StoriesSection's slider is pointer-drag driven (onPointerDown/Move/Up), not a
+  library carousel.
+- RecommendedSection's stat counter (5.1X) and ConnectedSection's calendar-dot
+  grid both animate via manual requestAnimationFrame easing, not CSS.
+
+Added 2026-09-10.

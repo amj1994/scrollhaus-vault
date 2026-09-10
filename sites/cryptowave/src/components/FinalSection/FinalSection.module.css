@@ -1,0 +1,93 @@
+.section {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg);
+  padding-block: clamp(56px, 8vw, 120px);
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: var(--page-max-width);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(32px, 4vw, 56px);
+  align-items: center;
+}
+
+.copyColumn {
+  display: flex;
+}
+
+.gradientOrange{
+  position: absolute;
+  width: 295.442px;
+  height: 243px;
+  transform: rotate(-135.296deg);
+  opacity: 0.3;
+  right: -8vw;
+  bottom: 25vh;
+
+  border-radius: 295.442px;
+  background: #FBBD58;
+  filter: blur(121px);
+}
+
+.gradientBlue{
+  position: absolute;
+  width: 616px;
+  height: 243px;
+  right: -20vw;
+  bottom: -4vh;
+  transform: rotate(44.704deg);
+  opacity: 0.3;
+
+  border-radius: 616px;
+  background: #6563EB;
+  filter: blur(101px);
+}
+
+
+.cardColumn {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.subGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(16px, 2vw, 24px);
+}
+
+@media (min-width: 900px) {
+  .subGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr 1.1fr;
+  }
+}
+
+/* Reference layout: at 1440px the security/card column is a fixed 760px so
+   the SecurityCard block keeps its landscape proportions instead of
+   growing tall-and-narrow. Scaled exactly proportionally (x1.333) at 1920px. */
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: 1fr 760px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .grid {
+    grid-template-columns: 1fr 1013px;
+  }
+}

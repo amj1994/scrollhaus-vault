@@ -1,0 +1,55 @@
+CIRFORM — A bright future for Banking
+Fintech / digital banking landing page. TanStack Start v1 + React 19 + Vite 7 + Tailwind v4.
+
+STACK
+- Framer Motion for component animation, count-ups, magnetic cursor.
+- GSAP + ScrollTrigger for scroll-triggered reveals, letter-by-letter type-in, and
+  dashboard/chart animation.
+- Lenis for desktop smooth scrolling only (disabled under 1024px), synced to GSAP's
+  own ticker rather than a plain rAF loop — this is the correct pattern whenever a
+  site already drives GSAP ScrollTrigger, since both then share one clock.
+- No backend, no database, no auth, single `/` route.
+
+STRUCTURE
+Navbar, Hero, About, NumbersSpeak, SmarterBanking, Performance, ExpenseGrid,
+Testimonials, FAQ, FooterCTA — plus a fixed MagneticCursor (mounted only after
+client mount) that replaces the desktop pointer with a spring-following ring and dot.
+
+HERO VIDEO — the one asset that was swapped
+The original template's hero used a stock looping clip ("hero-bg.mp4", crossfaded
+between two <video> elements every loop to hide the seam). That clip was replaced
+with an original, generated hero video so the deployed code and the showcased
+preview match exactly:
+  - Generated via Higgsfield: a still (nano_banana_pro) of abstract luminous blue/
+    cyan light-streaks with one warm gold accent streak, on near-black — matching
+    the hero's own radial night-blue gradient background — then animated via
+    kling3_0 using that same still as both the start and end frame, for a slow,
+    seamless ambient flow loop.
+  - Self-hosted as public/hero-bg.mp4 (H.264, yuv420p, faststart).
+  - Referenced in src/components/landing/Sections1.tsx in place of the original
+    qclay-hosted hero-bg.mp4; the crossfade-loop <video> logic itself is untouched.
+Every other asset on the page (about-logo.svg, women.png, users.png, the six
+avatar photos, testimonial/partner logos, all icons) is untouched and still
+hotlinked to the original template CDN (qclay.design/lovable/circom/...) — per
+hero-only asset-swap scope, only the primary hero visual was regenerated.
+
+NOTABLE IMPLEMENTATION DETAILS
+- About section: every letter of the mission paragraph type-writes in via GSAP
+  (stagger 0.011s), gradient-clipped text; a specific 5-word phrase then receives
+  a second left-to-right color sweep overlay timed to start only after the
+  type-in fully finishes.
+- NumbersSpeak: 140 individually-seeded "dust" particles drift up and off each
+  rotating stat number using deterministic pseudo-random offsets (no Math.random
+  jitter between renders).
+- Performance: donut chart and monthly bar chart are hand-built SVG/DOM, animated
+  with GSAP (dasharray offset tween, elastic bar-height tween), not a charting
+  library.
+- ExpenseGrid: the "Average Capital transactions" amount renders as individually
+  ticking digit tiles (each digit spins through random values before resolving),
+  and the low-fee-transactions marquee is a duplicated 528px-wide track animated
+  via a plain CSS keyframe, not JS.
+- Preserved verbatim per the source spec's own instruction: the typos "Start Free
+  trail" / "Start Free trail today" and the person-name typos "Tilayr minson",
+  "Jullish warla", "Sanyun balisa", "Ahmad sabyan".
+
+Added 2026-09-10.

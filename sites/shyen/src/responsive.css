@@ -1,0 +1,69 @@
+/* ============================================================
+   Surgical responsive overrides.
+   Only fix the specific overflow/overlap issues at narrower
+   widths (preview-with-chat ≈1137px). Desktop layout untouched.
+   ============================================================ */
+
+/* ---------- HERO: shrink the email form so it fits the left column ---------- */
+@media (max-width: 1280px) {
+  .hero-section form {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .hero-section h1 {
+    font-size: 76px !important;
+    line-height: 68px !important;
+    letter-spacing: -5px !important;
+  }
+  /* left content box: tighten right inset so paragraph/form don't run off */
+  .hero-section > div.grid > div:first-child > div.absolute {
+    left: 24px !important;
+    right: 24px !important;
+    bottom: 32px !important;
+  }
+  /* nav: shrink fixed 676px so it stays inside the left column */
+  .hero-section nav {
+    width: calc(50vw - 56px) !important;
+    min-width: 320px;
+  }
+}
+
+/* ---------- CARE: prevent the three floating chat cards from overlapping ---------- */
+@media (max-width: 1280px) {
+  /* cards container: switch to a centered column instead of absolute fan-out */
+  .care-section .relative > .relative[style*="height: 520px"] {
+    height: auto !important;
+    margin-top: 56px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 28px;
+    padding-bottom: 40px;
+  }
+  .care-section .relative > .relative[style*="height: 520px"] > div {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 520px;
+  }
+  .care-section .relative > .relative[style*="height: 520px"] > div > div:first-child {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- CONNECTED: release the 1272px min-width on the banner ---------- */
+@media (max-width: 1280px) {
+  .connected-section [style*="min-width: 1272px"],
+  .connected-section [style*="minWidth: \"1272px\""] {
+    min-width: 0 !important;
+  }
+  /* keep the inner two-column layout; just let the slider track shrink */
+  .connected-section [style*="width: \"576px\""] {
+    width: 100% !important;
+    max-width: 100%;
+  }
+}

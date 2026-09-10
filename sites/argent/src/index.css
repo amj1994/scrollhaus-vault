@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: auto; background: #DADADA; }
+body {
+  font-family: 'Helvetica Neue ME', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #DADADA;
+  color: #ffffff;
+  overflow-x: clip;
+}
+::-webkit-scrollbar { width: 0px; background: transparent; }

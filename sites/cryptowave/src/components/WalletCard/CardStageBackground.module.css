@@ -1,0 +1,53 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.glow {
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(
+          42% 38% at 48% 42%,
+          rgba(246, 176, 60, 0.16) 0%,
+          rgba(246, 176, 60, 0) 70%
+  ),
+  radial-gradient(
+          46% 42% at 78% 82%,
+          rgba(101, 98, 234, 0.24) 0%,
+          rgba(101, 98, 234, 0) 70%
+  );
+}
+
+/* Three concentric rings behind the balance card. Reference diameters at
+   1440px: 430.468px / 522px / 592px, all centered on the same point -
+   expressed here as % of the panel so they scale with it. */
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.058px solid rgba(255, 255, 255, 0.16);
+  opacity: 0.4;
+  backdrop-filter: blur(78.82px);
+}
+
+.ringInner {
+  width: 62.6%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.ringMiddle {
+  width: 75.9%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.ringOuter {
+  width: 86.1%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 100%);
+}

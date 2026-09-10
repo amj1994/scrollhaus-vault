@@ -1,0 +1,65 @@
+PALLET ROSS — A place to display your masterpiece
+Artist-marketplace landing page whose real subject is a single scroll-choreographed
+set of seven artwork cards: they fan out in a scripted intro, then gather into one
+overlapping stack, descend, and fan back out into a diagonal cascade ladder as the
+page scrolls — then lock in place and scroll normally with the document. Plain Vite +
+React 18 + TypeScript + Tailwind v4 + framer-motion + lucide-react.
+
+STACK
+- A single global `ScrollCardsOverlay` owns all seven cards for the entire page
+  lifetime. It runs in two entirely different modes that hand off to each other
+  at one instant, not seven independently-driven elements:
+  1. **Intro** (time-based, not scroll-based): fixed, non-interactive overlay.
+     Card 1 gets a three-phase keyframe animation (rise to center → fly to the
+     rightmost fan slot → sweep left across all seven slots to the leftmost),
+     using the exact keyframe/`times` array from the prompt. The other six cards
+     fade in one at a time, each timed to the instant the sweeping lead card's
+     x-position visually passes that card's slot — computed by inverting the
+     `smoothEase` cubic-bezier curve (a custom `getTimeForProgress` binary-search
+     solver in src/lib/easing.ts), not a fixed stagger.
+  2. **Scroll-linked** (after the intro's `onAnimationComplete` fires): seven
+     `useTransform` chains per card, each driven by a scroll progress value
+     clamped to a measured `lockProgress` so the cards freeze exactly at
+     Section 2's cascade layout once you scroll past it, then ride along with
+     the document like normal content — the overlay wrapper itself switches
+     between `position: fixed` and `position: absolute` (pinned to the measured
+     scroll offset), but the seven card components underneath never unmount,
+     so there is no visible reset crossing that boundary.
+- `lockProgress` is measured (on mount, on resize, and again after a 300ms
+  settle timeout) from the real DOM position of the section tagged
+  `data-section="two"`, not a hardcoded scroll fraction.
+- No backend, single page, no router.
+
+ASSETS — none swapped, all fetched verbatim from the original CDN
+The seven card images and three banner photos were downloaded byte-for-byte from
+qclay.design/lovable/pallet/ into public/ and referenced as plain `/card-N.png` /
+`/banner-N.png` paths, exactly as the prompt's asset list specifies. There is no
+generated hero here — every card image is real template artwork, not a
+placeholder, so nothing was regenerated.
+
+IMPLEMENTATION DECISIONS — not specified in the prompt, made explicitly
+The prompt names which physical card is the intro's "lead" (card-1, sweeping
+into the leftmost fan slot) but never states which of the other six card images
+fills which of the remaining six fan slots, nor which cascade-ladder position
+each cascade slot corresponds to in the scroll-linked phase. Assigned card-(i+1)
+to fan slot i for i=0..6 (so card-1 through card-7 map onto the fan left-to-
+right in image order), and paired each card with the cascade slot of the same
+index — keeping one consistent card identity across the intro → stack → cascade
+journey rather than having a card's image change mid-flight.
+
+NOTABLE IMPLEMENTATION DETAILS
+- During the "gather" phase (scroll progress 0 → 33% of lockProgress), all
+  seven cards share literally identical x/y/rotate/scale target values, so they
+  overlap pixel-for-pixel and read as a single card with a single shadow — the
+  prompt calls this out explicitly as the point of using shared keyframe
+  targets rather than seven independently-tweened positions.
+- The reveal duration during the intro sweep is deliberately asymmetric: 0.06s
+  for the three slots nearest the sweep's end (near the lead card's final
+  resting slot) versus 0.18s for the three nearest its start, so cards popping
+  in early in the sweep are individually more visible while the later ones
+  arrive in a tighter flourish.
+- Hovering any card (in either fan or cascade layout) jumps its z-index to 30
+  via component state, not a CSS `:hover` z-index (which real stacking contexts
+  can't animate reliably across siblings with independently-set base z-indices).
+
+Added 2026-09-10.

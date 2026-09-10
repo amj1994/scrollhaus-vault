@@ -1,0 +1,70 @@
+.root {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 1.6vw, 20px);
+}
+
+.avatar {
+  width: clamp(34px, 3vw, 44px);
+  height: clamp(34px, 3vw, 44px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--color-border-default);
+  flex-shrink: 0;
+}
+
+.link {
+  display: none;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: auto;
+  font-size: var(--fs-nav);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.link:hover {
+  color: var(--color-text-primary);
+}
+
+.linkIndex {
+  color: var(--color-text-tertiary);
+}
+
+.addressPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6em 0.9em;
+  font-size: var(--fs-body-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.addressPill:hover {
+  background: var(--color-surface-3);
+}
+
+/* The [04] link only has room to breathe once the header has real width. */
+@media (min-width: 560px) {
+  .link {
+    display: inline-flex;
+  }
+}
+
+.addressPill {
+  margin-left: auto;
+}
+
+@media (min-width: 560px) {
+  .addressPill {
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,4 @@
+/* Satoshi and DIN Condensed are not vendored (no licensed font files available);
+   substituted with the closest free equivalents while keeping the same two-font
+   split — Manrope for body/heading, Oswald (a compressed grotesk) for HUD readout text. */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@300..800&family=Oswald:wght@400..500&display=swap");

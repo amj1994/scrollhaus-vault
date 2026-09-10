@@ -1,0 +1,73 @@
+Build a single-page website called "Pictura" (PIXEL PERFECT). Full-screen dark-mode landing page
+(background #0E0E0E) where a photograph mosaic in the shape of a heart occupies the center of the
+screen. As the user scrolls (mouse wheel or touch), the heart's large cards disperse to fixed final
+positions around the viewport while a small pixel-heart in the center expands and reveals more
+mini-photos. Clicking any dispersed card expands it into a centered modal with metadata. There is
+no vertical page scroll — scroll events drive an animation progress value (0..1), not the document.
+
+## 1. Stack
+TanStack Start v1 (React 19, Vite 7). File-based routing under `src/routes/`. Tailwind CSS v4 via
+`@import "tailwindcss"` in `src/styles.css`. No shadcn components on the page — everything is plain
+divs/inline styles plus a single `<style>` block for keyframes. Fonts loaded through a
+`<link rel="stylesheet">` in `__root.tsx` `head()` — Instrument Serif (regular + italic) and Inter
+Tight (400, 500). `html`/`body`: background #0E0E0E, color #FCFCFC, overflow hidden, height 100%.
+
+## 2. Remote assets — hotlinked, NOT downloaded
+Every image and icon is referenced by its exact `https://qclay.design/lovable/pictura/...` URL and
+is NOT self-hosted — the source spec explicitly forbids downloading them. 43 large heart photos
+(person1..person44.png, skipping person8), 50 small heart photos (person_small/person1..50.png),
+plus favicon/arrows/frame.svg and 9 modal icons, all under that same base path.
+
+## 3. Layout hierarchy
+1. A `<style>` block with all keyframes (logoDraw, fadeInUp, lineGrow, letterIn, wordIn, wordInDim,
+   paraWordIn, arrowIn, btnPop, btnExpand, cellReveal, smallCubeIn, smallImgIn, imgFadeIn, modalFade,
+   pillPop, tagIn) plus a `.modal-img-wrap::after` gradient rule and `.gs-hoverable` hover rules.
+2. A decorative `frame.svg`, absolutely positioned, blurred 14px while a modal is open.
+3. Header (z-30): an animated burger button (two lines, scaleX 0→1 on load, then scaleX 1↔0.53 on
+   menu toggle), a centered 8-ray hand-drawn StarLogo + letter-by-letter "PICTURA" wordmark (final
+   "A" italic), and an animated "Get Started" pill button (outline variant) on the right.
+4. Sidebar menu (z-40): dim/blur overlay + a 340px-wide slide-in `<aside>` with nav links
+   (Explore/Collections/Photographers/Pricing/About/Contact) in Instrument Serif 36px.
+5. The heart container: 8 rows of large photo cards (4,6,6,7,8,6,4,2 = 43 cards) built from exact
+   pixel dimensions, each revealed in serpentine per-row order with a blur+rise entrance. A
+   `SmallHeart` sits inside row 3's notch — 11 rows of tiny 5.067px cells that pop in by Chebyshev
+   distance from center, fade in their first photo in snake order, then continuously crossfade
+   through a 50-image pool once scrolling starts, all timed by exact millisecond constants.
+6. Bottom typography: dim-to-white word-reveal H1 "Find the photo" (left), a center paragraph +
+   filled "Get Started" button, and a right-aligned H2 "that reflects your ideas" — all at
+   93.554px Instrument Serif, fading out as scroll progress increases.
+7. Card modal: clicking a dispersed card (only once progress ≥ 0.95) grows it from its exact
+   clicked-element rect to a centered 481×638.716px card in 0.55s. Icon rail (copy/like/dislike) to
+   its left; a white "Add to Collection" pill overlapping the top edge whose letters animate in
+   REVERSE order (last letter first); title "Ludita Goyongo." + tick-circle + maximize icon; a tag
+   row (Model/Aesthetic/Green/Photosession); a keyboard hint row 95px below. ESC closes,
+   ArrowLeft/Right paginate through the dispersed cards, clicking the overlay closes.
+
+## 4. Interaction/state model
+A non-passive `wheel` listener (plus touch equivalents) accumulates deltaY into a 0..600 value and
+derives `progress = accum/600`, calling `e.preventDefault()` so the document itself never scrolls.
+Progress linearly interpolates every big card from its heart-grid position to an exact per-photo
+`TARGETS` map entry (left/right/top/bottom or a raw `translate()`) — cards with no map entry instead
+fly off-screen along a per-card deterministic scatter vector. The same progress value drives the
+small heart's scale (1 → 2.223×), its cell background lerp (#FFF → #D9D9D9), and its "expand" image
+layer's opacity. Once progress > 0, a 1200ms interval continuously cycles every small-heart cell to
+the next image in a 50-image pool via a 600ms crossfade. After progress reaches 1, mouse movement
+drives a per-card inverse-parallax effect (5–35px range, inversely proportional to card area, with
+deterministic sine-based jitter), eased at 0.08/frame via requestAnimationFrame.
+
+## 5. Exact numeric constants (do not round or "clean up")
+Big heart row sizes: 126.962 / 126.962 (width 112.025) / 74.684 / 59.747 / 37.342 (×4 rows).
+H_GAP = V_GAP = 10, with a 124.43px gap after row-0 column 1 and a 90px gap after row-2 column 2.
+Small heart: 11 rows of 6/11/13/13/13/11/9/7/5/3/1 cells, 5.067px cell, 1px gap, 19.201px row-0
+notch, positioned at left 322.139 / top 278.397 inside the big heart container. Modal: 481 ×
+638.716px. Bottom H1/H2: 93.554px, letter-spacing -2.807px, line-height 90%.
+
+## 6. Verification
+On load: burger lines animate in, star logo draws its 8 rays, "PICTURA" letters blur in, the
+outline "Get Started" button pops from a 41px circle to 150px wide with letters + arrow. Heart
+cells reveal serpentine-per-row with blur+rise; the small heart pops in by Chebyshev distance, then
+fades in its base photos in snake order. Scrolling disperses every targeted card to its exact
+`TARGETS` position (untargeted cards fly off-screen); the small heart scales up, darkens, and its
+"expand" layer fades in. Every 1.2s the small heart's cells crossfade to their next pool image.
+Past progress 1, mouse movement parallaxes every big card. Clicking a dispersed card opens the
+481×638.716 modal growing from its own rect; content staggers in on the documented delays.

@@ -1,0 +1,37 @@
+ANIMATED LOADER — QClay hexagon loading scene
+Single full-viewport animated loading screen. Plain Vite + React 19 + TypeScript,
+no framework beyond React — no router, no Tailwind, just inline styles and one
+small CSS file for the keyframe animations.
+
+STRUCTURE
+One component (HexScene): a masked honeycomb of 29 absolutely-positioned hexagon
+tiles (16 outer "s" tiles, 8 "c" tiles, 4 icon-bearing "c"/"m" tiles in the center
+row), a blurred blue glow behind the center row, and a bottom-anchored
+"Loading Resources" shimmer label + uneven progress bar — no header, no nav, no
+scrolling, exactly as specified.
+
+ASSETS
+- The three hexagon polygon SVGs (c-polygon.svg, m-polygon.svg, s-polygon.svg) are
+  self-hosted under public/polygons/ — the prompt supplied their exact markup
+  directly, byte-for-byte, rather than a remote URL.
+- The 22 icon SVGs (icon-01..11.svg dark + icon-w-01..11.svg white) stay hotlinked
+  to the original https://qclay.design/lovable/loader/ root, exactly as instructed
+  ("the icon SVG files are in that root folder directly").
+- There is no photographic or video hero asset on this page at all — the entire
+  visual is built from the supplied SVGs plus animation — so nothing was swapped
+  or regenerated; the hero-only asset-swap rule has nothing to apply to here.
+
+BEHAVIOR
+- Breathing animation: a single requestAnimationFrame loop drives a 3200ms sine
+  wave; the center tile scales up while every other tile scales down and drifts
+  inward/outward in sync, with a per-ring 0.08-period delay so the motion visibly
+  cascades outward from the center on every cycle.
+- Icon cycling: exactly three icons show at once (one per center-row tile), never
+  repeating the same icon in the same slot twice in a row; every 2 seconds the
+  current triplet cross-fades to a new unique random triplet over 500ms with the
+  outgoing/incoming icons briefly overlapping so there's no blink.
+- Progress bar climbs from 0 to 100 in uneven random jumps (small 0.5–2.5 steps
+  35% of the time, larger 3–19 steps the rest) on a random 200–900ms cadence, then
+  loops back to 0 — deliberately organic rather than linear.
+
+Added 2026-09-10.

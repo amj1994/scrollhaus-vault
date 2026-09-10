@@ -1,0 +1,59 @@
+Moneta — Interactive Loader (prompt 39)
+
+Stack: Vite + React 18 + TypeScript + Tailwind v4 + framer-motion, plain scaffold
+(no TanStack Start — not requested by the prompt). Assets fetched live from
+https://qclay.design/lovable/moneta (CDN base specified by the prompt; nothing
+self-hosted, no hero asset generation — the prompt is a full-bleed animated
+preloader with no photographic hero to swap).
+
+WHAT THIS PAGE IS
+A single full-screen animated "MONETA KEY" preloader composition: layered blooms,
+a 30-particle ambient field, orbiting-line SVG ornaments, a breathing sphere image
+(mix-blend-mode: color-dodge), a dashed animated orbit path drawn with a moving
+gradient mask, a logo mark whose two triangle cutouts animate through a looping
+wipe sequence, a canvas-based curved "number arc" readout that scrolls through
+0-100 as a synthetic progress value advances, and four bouncing dots. The page
+never exits or transitions to further content — there is no completion/exit
+sequence specified in the prompt, so once progress reaches 100 the composition
+just idles in its finished state. This matches the prompt's scope: it describes
+only the loader itself.
+
+RECONSTRUCTION NOTES
+- OrbitDot: the prompt's pseudocode for this helper had garbled operators in the
+  angle/offset math. Reconstructed as `startOffset * Math.PI * 2 + (elapsed /
+  duration) * Math.PI * 2` for a full 2*PI revolution per `duration` seconds,
+  offset by the dot's start phase. The component is kept exported but unused in
+  the render tree, per the prompt's own instruction that it's a helper not
+  currently wired into the composition.
+- Progress driver (Preloader.tsx): implemented literally from the prompt's
+  pseudocode — a set of random 0-100 segments, each with its own random start
+  delay and eased duration, driven by local closure variables (`let cancelled`,
+  `let current`) scoped inside the effect rather than component-level refs, so
+  each effect invocation owns its own independent, self-contained animation run.
+
+BUG FOUND AND FIXED — genuine runtime bug, not a build-time issue
+PreloaderNumberArc.tsx originally had two separate effects sharing one
+`frameRef`: an effect keyed on `[progress]` that starts a `requestAnimationFrame`
+smoothing loop (`tick`) only if `frameRef.current` is null, and a separate
+mount-only (`[]`) effect that sized the canvas and, in its cleanup, called
+`cancelAnimationFrame(frameRef.current)` unconditionally. Under React 18
+StrictMode's dev-only double-invoke (every effect's cleanup runs once, then
+every effect re-runs, on the very first commit), the mount-only effect's
+cleanup fired during that synthetic pass and cancelled the *other* effect's
+just-scheduled frame before it ever ran — and because nothing reset
+`frameRef.current` back to null, the null-check permanently blocked all future
+scheduling. Net effect: the number-arc canvas rendered its one initial
+`draw(0)` call and then never updated again, freezing the readout at "0 1 2"
+for the life of the component, while every other layer (WAAPI-driven framer
+motion animations) continued animating normally — a very specific, easy-to-miss
+symptom (verified live with an injected requestAnimationFrame counter showing
+zero `tick()` invocations across seconds of real elapsed time). Fixed by
+removing the stray cross-effect cancellation and giving the `[progress]`
+effect its own self-owned cleanup that cancels *and nulls* its own frame
+before every re-run, so it correctly reschedules regardless of StrictMode's
+double-invoke behavior. Verified after the fix: the readout now climbs
+smoothly from 0 to 100 and holds, matching the prompt's design.
+
+DEVIATIONS
+None beyond the OrbitDot pseudocode reconstruction above and the bug fix
+(which restores intended behavior, not a deviation from it).

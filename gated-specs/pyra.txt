@@ -1,0 +1,54 @@
+PYRA — Fire-Forged Jewelry (original design, not from a prompt file)
+
+Stack: Vite + React 18 + TypeScript + Tailwind v4 + framer-motion + lenis (smooth
+document scroll — this site owns no custom scroll mechanism, so Lenis was added
+by default per house convention). Display font: Syncopate (Google Fonts), body
+font: Manrope.
+
+ORIGIN OF THIS SITE
+The user supplied three structured Higgsfield image-generation prompts (macro
+phoenix feather, phoenix in flight, gold flame ring) plus a cinematic video
+brief describing a feather-to-ring transformation sequence, and asked for a
+website built around them — with explicit instruction to vary the generated
+assets rather than reproduce the given prompts verbatim. There was no page
+layout, copy, or structure supplied; the brand name (PYRA), copy, section
+structure, and visual design were designed from scratch around the asset
+concept, per the user's explicit choice to have the page designed rather than
+supply their own spec.
+
+ASSETS
+- Hero video: kling3_0, 16:9, 10s, mode "pro", sound off — a single continuous
+  cinematic shot: macro feather ignition -> pull back to phoenix in flight ->
+  a feather detaches and falls -> morphs into the product ring -> settles into
+  a hero product shot. Generated directly via Higgsfield's video tool per the
+  user's explicit request (this session's default is to hand back a start/end
+  frame pair for the user to build in Google Flow instead — the user asked for
+  the rendered video directly this time, so that default was overridden for
+  this one request only).
+- Three nano_banana_pro stills (4K, 16:9), each intentionally varied from the
+  user's original JSON prompts rather than reproduced verbatim: the feather
+  macro shifted from magenta/ruby tones to copper/crimson with obsidian-veined
+  embers; the phoenix's halo became a spiraling flame helix instead of a plain
+  ring, wings mid-downstroke instead of upswept; the ring changed from a
+  yellow-gold double-band with a carved swirl stone to a single rose-gold
+  spire band with a faceted flame crown and pear-cut diamond trim — a
+  distinct product, not the same ring re-described.
+
+PAGE STRUCTURE
+Navbar (fixed, mix of wordmark + section anchors + CTA) -> Hero (full-bleed
+video, PYRA wordmark in Syncopate, tagline, CTA) -> Story/Origin section
+(feather image + brand-origin copy) -> Philosophy section (full-bleed phoenix
+image with parallax via framer-motion useScroll/useTransform, brand
+philosophy copy) -> Product section (ring image + product details: 18k rose
+gold, fire opal spire cut, pear-cut diamond accents, $4,850, CTA) -> Footer.
+
+All section entrances use framer-motion whileInView. Verified via a proper
+wheel-event scroll capture (continuous_capture.mjs) that every entrance
+animation and the Lenis-driven scroll itself behave correctly; an earlier
+manual `window.scrollTo()` probe produced a misleading thin-sliver screenshot
+because it fought Lenis's own scroll-position ownership — not a site bug,
+confirmed by re-testing with real wheel-event scrolling.
+
+DEVIATIONS
+None from a spec, since none was given — this is an original design built to
+house the generated assets, per explicit user direction.

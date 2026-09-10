@@ -1,0 +1,128 @@
+.root {
+  position: relative;
+  height: 100%;
+  padding: 37px 38px;
+  background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.02) 0%,
+          rgba(255, 255, 255, 0.02) 100%
+  ),
+  #030304;
+  border: 1px solid var(--color-border-panel);
+  border-radius: clamp(18px, 1.8vw, 26px);
+  box-shadow: 0 26px 25px 0 rgba(230, 221, 254, 0.07) inset;
+}
+
+.edgeNav {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heading {
+  font-size: clamp(20px, 1.94vw, 28px);
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+  letter-spacing: -0.84px;
+  color: var(--color-text-primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(84px, 6.9vw, 99px);
+  height: clamp(23px, 1.9vw, 27px);
+  text-align: justify;
+  text-transform: uppercase;
+  font-family: "Clash Grotesk", var(--font-display);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 120%;
+  letter-spacing: -0.24px;
+  color: #6b6b6b;
+  background: #101010;
+  mix-blend-mode: plus-lighter;
+  border: none;
+  border-radius: 13.5px;
+}
+
+.lede {
+  margin-top: 10px;
+  color: #b3b3b3;
+  leading-trim: both;
+  text-edge: cap;
+  font-family: Helvetica, var(--font-body);
+  font-size: clamp(14px, 1.25vw, 18px);
+  font-style: normal;
+  font-weight: 300;
+  line-height: normal;
+  letter-spacing: -0.72px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: clamp(16px, 2vw, 24px);
+}
+
+/* Both non-featured rows share this exact styling - previously one of the
+   source SVGs (row-3, formerly "SVG.svg") had opacity:0.5 baked into the
+   file itself while the other didn't, so they never actually matched no
+   matter what CSS opacity was applied here on top. Fixed at the source
+   (removed the baked-in opacity from the SVG) so this single shared
+   opacity value now actually looks the same on both. */
+.rowImg {
+  position: relative;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.6;
+}
+
+.rowImg2 {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.6;
+  margin-top: -5px;
+}
+
+/* The featured (BNB) row pops forward over the row above it only - only
+   margin-top is negative now. Previously margin-block:-10px pulled BOTH
+   edges inward, which meant the bottom row (row-1, last in the list) got
+   its top edge covered by the featured row's expanded/elevated box since
+   the featured row has the higher z-index. Bottom now sits flush
+   (margin-bottom: 0) so it's fully visible, not just "behind" in DOM
+   order. */
+.rowImgFeatured {
+  position: relative;
+  z-index: 0;
+  margin-top: -10px;
+  margin-bottom: 0;
+  opacity: 1;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.55));
+}
+
+/* Rows were reading too small specifically around 1440px - since they're
+   width:100% of .root's own content box, trimming the side padding here
+   gives them more room to render at a bigger, more legible size without
+   touching anything else on this card. */
+@media (min-width: 1280px) and (max-width: 1919px) {
+  .root {
+    padding: 28px 22px;
+  }
+}

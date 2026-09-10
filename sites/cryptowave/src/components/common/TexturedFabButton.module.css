@@ -1,0 +1,26 @@
+.fab {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: clamp(9px, 0.9vw, 12px);
+  color: var(--color-text-primary);
+  background: url("https://qclay.design/lovable/crypto/abstract-design.svg") center/cover, #1a1a23;
+  border: clamp(4px, 0.4vw, 5px) solid #212124;
+  border-radius: clamp(28px, 2.6vw, 37.5px);
+  box-shadow: 8px 6px 4.5px 1px rgba(255, 255, 255, 0.1) inset;
+  transform: rotate(-15deg);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.fab svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fab:hover {
+    transform: rotate(-5deg) scale(1.05);
+  }
+}
